@@ -1,0 +1,61 @@
+# -------------------------
+# Core build artifacts
+# -------------------------
+build/
+out/
+bin/
+obj/
+*.o
+*.a
+*.so
+*.elf
+*.bin
+*.hex
+*.map
+*.lst
+*.d
+
+# -------------------------
+# VS Code
+# -------------------------
+.vscode/
+*.code-workspace
+
+# -------------------------
+# CMake (if you use it later)
+# -------------------------
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# -------------------------
+# Make build outputs
+# -------------------------
+*.dSYM/
+*.dep
+
+# -------------------------
+# Logs and temporary files
+# -------------------------
+*.log
+*.tmp
+*.swp
+*.swo
+
+# -------------------------
+# OS-specific clutter
+# -------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Linux
+*~
