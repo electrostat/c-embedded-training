@@ -22,7 +22,7 @@ obj/
 *.code-workspace
 
 # -------------------------
-# CMake (if you use it later)
+# CMake
 # -------------------------
 CMakeFiles/
 CMakeCache.txt
