@@ -17,7 +17,7 @@ float q15_to_float(q15_t x) {
 }
 
 q15_t q15_add(q15_t a, q15_t b) {
-    int32_t tmp = (int32_t)a + (int32_t)b; 
+    int32_t tmp = (int32_t)a + (int32_t)b; //32-bit conversion
 
     if (tmp > 32767)  tmp = 32767;
     if (tmp < -32768) tmp = -32768;
