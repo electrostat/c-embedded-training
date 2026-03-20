@@ -34,3 +34,12 @@ q15_t q15_mul(q15_t a, q15_t b) {
 
     return (q15_t)tmp;
 }
+
+q15_t q15_sub(q15_t a, q15_t b) {
+    int32_t tmp = (int32_t)a - (int32_t)b; //32-bit conversion
+
+    if (tmp > 32767)  tmp = 32767;
+    if (tmp < -32768) tmp = -32768;
+
+    return (q15_t)tmp;
+}
