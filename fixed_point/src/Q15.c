@@ -43,3 +43,20 @@ q15_t q15_sub(q15_t a, q15_t b) {
 
     return (q15_t)tmp;
 }
+
+q15_t q15_div(q15_t a, q15_t b) {
+    // Handle divide-by-zero
+    if (b == 0) {
+        return (a >= 0) ? 0x7FFF : (q15_t)0x8000;
+    }
+
+    // Promote to 32-bit and scale
+    int32_t dividend = ((int32_t)a << 15);
+    int32_t result = dividend / b;
+
+    // Saturate to Q15 range
+    if (result > 32767) result = 32767;
+    if (result < -32768) result = -32768;
+
+    return (q15_t)result;
+}
