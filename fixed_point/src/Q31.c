@@ -55,7 +55,7 @@ q31_t q31_div(q31_t a, q31_t b) {
     }
 
     // Promote to 32-bit and scale
-    int64_t dividend = ((int64_t)a << 32);
+    int64_t dividend = ((int64_t)a << Q31_FRACTIONAL_BITS); 
     int64_t result = dividend / b;
 
     // Saturate to Q15 range
