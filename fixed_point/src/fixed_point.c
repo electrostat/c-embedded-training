@@ -1,4 +1,6 @@
 #include "fixed_point.h"
+#include <stdio.h>
+#include <assert.h>
 
 // Internal helper: ensure both operands share the same format
 static void fp_assert_same_format(fixed_point_t a, fixed_point_t b) {
