@@ -9,5 +9,6 @@
 
 // Shared PASS/FAIL helper
 void fp_expect_int(const char* label, int32_t result, int32_t expected);
+void fp_expect_int_tol(const char* label, int64_t result, int64_t expected, int64_t tol);
 
 #endif
