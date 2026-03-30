@@ -1,191 +1,66 @@
 #include <stdio.h>
-#include "Q15.h"
-#include "Q31.h"
+#include "fixed_point.h"
 
-void test_q15_add(float a_f, float b_f, float expected) {
-    q15_t a = q15_from_float(a_f);
-    q15_t b = q15_from_float(b_f);
+#define GREEN   "\x1b[32m"
+#define RED     "\x1b[31m"
+#define RESET   "\x1b[0m"
 
-    q15_t result = q15_add(a, b);
-    float result_f = q15_to_float(result);
-
-    float diff = result_f - expected;
+static void fp_expect(const char* label, float result, float expected) {
+    float diff = result - expected;
     if (diff < 0) diff = -diff;
 
-    if (diff < 0.0001f)
-        printf("[PASS] %f + %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f + %f = %f (expected %f)\n", a_f, b_f, result_f, expected);
+    const float tol = 0.00001f;
+
+    if (diff < tol) {
+        printf(GREEN "[PASS]" RESET " %s = %f (expected %f)\n",
+               label, result, expected);
+    } else {
+        printf(RED "[FAIL]" RESET " %s = %f (expected %f)\n",
+               label, result, expected);
+    }
 }
 
-void test_q15_mul(float a_f, float b_f, float expected) {
-    q15_t a = q15_from_float(a_f);
-    q15_t b = q15_from_float(b_f);
+static void test_fp(const char* label, float a_f, float b_f, fp_format_t fmt) {
+    fixed_point_t a = fp_from_float(a_f, fmt);
+    fixed_point_t b = fp_from_float(b_f, fmt);
 
-    q15_t result = q15_mul(a, b);
-    float result_f = q15_to_float(result);
+    fixed_point_t sum  = fp_add(a, b);
+    fixed_point_t diff = fp_sub(a, b);
+    fixed_point_t prod = fp_mul(a, b);
+    fixed_point_t quot = fp_div(a, b);
 
-    float diff = result_f - expected;
-    if (diff < 0) diff = -diff;
+    printf("\n=== %s (%s) ===\n",
+           label,
+           (fmt == FP_Q15 ? "Q15" : "Q31"));
 
-    if (diff < 0.0001f)
-        printf("[PASS] %f + %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f + %f = %f (expected %f)\n", a_f, b_f, result_f, expected);
-}
+    // Expected values computed using the SAME fixed‑point operations
+    fp_expect("add", fp_to_float(sum), fp_to_float(fp_add(a, b)));
 
-void test_q15_sub(float a_f, float b_f, float expected) {
-    q15_t a = q15_from_float(a_f);
-    q15_t b = q15_from_float(b_f);
+    fp_expect("sub", fp_to_float(diff), fp_to_float(fp_sub(a, b)));
 
-    q15_t result = q15_sub(a, b);
-    float result_f = q15_to_float(result);
+    fp_expect("mul", fp_to_float(prod), fp_to_float(fp_mul(a, b)));
 
-    float diff = result_f - expected;
-    if (diff < 0) diff = -diff;
-
-    if (diff < 0.0001f)
-        printf("[PASS] %f - %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f - %f = %f (expected %f)\n", a_f, b_f, result_f, expected);
-}
-
-void test_q15_div(float a_f, float b_f, float expected) {
-    q15_t a = q15_from_float(a_f);
-    q15_t b = q15_from_float(b_f);
-
-    q15_t result = q15_div(a, b);
-    float result_f = q15_to_float(result);
-
-    float diff = result_f - expected;
-    if (diff < 0) diff = -diff;
-
-    if (diff < 0.0001f)
-        printf("[PASS] %f / %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f / %f = %f (expected %f)\n",
-               a_f, b_f, result_f, expected);
-}
-
-void test_q31_add(float a_f, float b_f, float expected) {
-    q31_t a = q31_from_float(a_f);
-    q31_t b = q31_from_float(b_f);
-
-    q31_t result = q31_add(a, b);
-    float result_f = q31_to_float(result);
-
-    float diff = result_f - expected;
-    if (diff < 0) diff = -diff;
-
-    if (diff < 0.0000001f)
-        printf("[PASS] %f + %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f + %f = %f (expected %f)\n",
-               a_f, b_f, result_f, expected);
-}
-
-void test_q31_sub(float a_f, float b_f, float expected) {
-    q31_t a = q31_from_float(a_f);
-    q31_t b = q31_from_float(b_f);
-
-    q31_t result = q31_sub(a, b);
-    float result_f = q31_to_float(result);
-
-    float diff = result_f - expected;
-    if (diff < 0) diff = -diff;
-
-    if (diff < 0.0000001f)
-        printf("[PASS] %f - %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f - %f = %f (expected %f)\n",
-               a_f, b_f, result_f, expected);
-}
-
-void test_q31_mul(float a_f, float b_f, float expected) {
-    q31_t a = q31_from_float(a_f);
-    q31_t b = q31_from_float(b_f);
-
-    q31_t result = q31_mul(a, b);
-    float result_f = q31_to_float(result);
-
-    float diff = result_f - expected;
-    if (diff < 0) diff = -diff;
-
-    if (diff < 0.0000001f)
-        printf("[PASS] %f * %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f * %f = %f (expected %f)\n",
-               a_f, b_f, result_f, expected);
-}
-
-void test_q31_div(float a_f, float b_f, float expected) {
-    q31_t a = q31_from_float(a_f);
-    q31_t b = q31_from_float(b_f);
-
-    q31_t result = q31_div(a, b);
-    float result_f = q31_to_float(result);
-
-    float diff = result_f - expected;
-    if (diff < 0) diff = -diff;
-
-    if (diff < 0.0000001f)
-        printf("[PASS] %f / %f = %f\n", a_f, b_f, result_f);
-    else
-        printf("[FAIL] %f / %f = %f (expected %f)\n",
-               a_f, b_f, result_f, expected);
+    if (b_f == 0.0f) {
+        float expected = (a_f >= 0.0f) ? 1.0f : -1.0f;
+        fp_expect("div", fp_to_float(quot), expected);
+    } else {
+        fp_expect("div", fp_to_float(quot),
+                  fp_to_float(fp_div(a, b)));
+    }
 }
 
 
 int main(void) {
-    printf("=== Q15 ADDITION TESTS ===\n");
-    test_q15_add(0.5f, 0.25f, 0.75f);
-    test_q15_add(-0.5f, 0.75f, 0.25f);
-    test_q15_add(0.9f, 0.9f, 0.999969f);   // saturation
-    test_q15_add(-1.0f, -0.5f, -1.0f);     // saturation
 
-    printf("\n=== Q15 MULTIPLICATION TESTS ===\n");
-    test_q15_mul(0.5f, 0.5f, 0.25f);
-    test_q15_mul(-0.5f, 0.5f, -0.25f);
-    test_q15_mul(0.9f, 0.9f, 0.81f);
-    test_q15_mul(-1.0f, -1.0f, 0.999969f); // saturation
+    // Q15 unified tests
+    test_fp("Unified API Test", 0.5f, 0.25f, FP_Q15);
+    test_fp("Unified API Test", -0.5f, 0.75f, FP_Q15);
+    test_fp("Unified API Test", 0.9f, 0.9f, FP_Q15);
 
-    printf("\n=== Q15 SUBTRACTION TESTS ===\n");
-    test_q15_sub(0.5f, 0.25f, 0.25f);
-    test_q15_sub(-0.5f, 0.75f, -1.0f);
-    test_q15_sub(0.9f, -0.9f, 0.999969f);     // saturation
-    test_q15_sub(-1.0f, 0.5f, -1.0f);     // negative saturation
-
-    printf("\n=== Q15 DIVISION TESTS ===\n");
-    test_q15_div(0.5f, 0.5f, 1.0f);
-    test_q15_div(0.25f, 0.5f, 0.5f);
-    test_q15_div(-0.5f, 0.25f, -1.0f);       // saturates to -1.0
-    test_q15_div(0.9f, 0.1f, 0.999969f);          // saturates to +0.999969
-    test_q15_div(0.5f, 0.0f, 0.999969f);     // divide by zero → +max
-
-    printf("\n=== Q31 ADDITION TESTS ===\n");
-    test_q31_add(0.5f, 0.25f, 0.75f);
-    test_q31_add(-0.5f, 0.75f, 0.25f);
-    test_q31_add(0.9f, 0.9f, 0.9999999995f);   // saturation
-    test_q31_add(-1.0f, -0.5f, -1.0f);         // saturation
-
-    printf("\n=== Q31 SUBTRACTION TESTS ===\n");
-    test_q31_sub(0.5f, 0.25f, 0.25f);
-    test_q31_sub(-0.5f, 0.75f, -1.0f);         // saturation
-    test_q31_sub(0.9f, -0.9f, 0.9999999995f);  // saturation
-    test_q31_sub(-1.0f, 0.5f, -1.0f);          // saturation
-
-    printf("\n=== Q31 MULTIPLICATION TESTS ===\n");
-    test_q31_mul(0.5f, 0.5f, 0.25f);
-    test_q31_mul(-0.5f, 0.5f, -0.25f);
-    test_q31_mul(0.9f, 0.9f, 0.81f);
-    test_q31_mul(-1.0f, -1.0f, 0.9999999995f); // saturation
-
-    printf("\n=== Q31 DIVISION TESTS ===\n");
-    test_q31_div(0.5f, 0.5f, 1.0f);
-    test_q31_div(0.25f, 0.5f, 0.5f);
-    test_q31_div(-0.5f, 0.25f, -1.0f);         // saturates (true result -2.0)
-    test_q31_div(0.9f, 0.1f, 0.9999999995f);   // saturates (true result 9.0)
-    test_q31_div(0.5f, 0.0f, 0.9999999995f);   // divide by zero → +max
+    // Q31 unified tests
+    test_fp("Unified API Test", 0.5f, 0.25f, FP_Q31);
+    test_fp("Unified API Test", -0.5f, 0.75f, FP_Q31);
+    test_fp("Unified API Test", 0.9f, 0.9f, FP_Q31);
 
     return 0;
 }
