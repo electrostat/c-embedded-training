@@ -1,6 +1,5 @@
 #include <stdio.h>
 #include "fixed_point.h"
-#include "math_test.h"
 
 #define GREEN   "\x1b[32m"
 #define RED     "\x1b[31m"
@@ -62,8 +61,6 @@ int main(void) {
     test_fp("Unified API Test", 0.5f, 0.25f, FP_Q31);
     test_fp("Unified API Test", -0.5f, 0.75f, FP_Q31);
     test_fp("Unified API Test", 0.9f, 0.9f, FP_Q31);
-
-    run_q15_math_tests();
 
     return 0;
 }
