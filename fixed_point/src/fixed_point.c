@@ -21,6 +21,10 @@ fixed_point_t fp_from_float(float x, fp_format_t fmt) {
             out.value.q31 = q31_from_float(x);
             break;
 
+        case FP_Q7_8:
+            out.value.q7_8 = q7_8_from_float(x);
+            break;
+
         default:
             // Unknown format: zero out
             out.value.q31 = 0;
@@ -40,6 +44,9 @@ float fp_to_float(fixed_point_t x) {
         case FP_Q31:
             return q31_to_float(x.value.q31);
 
+        case FP_Q7_8:
+            return q7_8_to_float(x.value.q7_8);
+
         default:
             return 0.0f;
     }
@@ -58,6 +65,10 @@ fixed_point_t fp_add(fixed_point_t a, fixed_point_t b) {
 
         case FP_Q31:
             out.value.q31 = q31_add(a.value.q31, b.value.q31);
+            break;
+
+        case FP_Q7_8:
+            out.value.q7_8 = q7_8_add(a.value.q7_8, b.value.q7_8);
             break;
 
         default:
@@ -83,6 +94,10 @@ fixed_point_t fp_sub(fixed_point_t a, fixed_point_t b) {
             out.value.q31 = q31_sub(a.value.q31, b.value.q31);
             break;
 
+        case FP_Q7_8:
+            out.value.q7_8 = q7_8_sub(a.value.q7_8, b.value.q7_8);
+            break;
+
         default:
             out.value.q31 = 0;
             break;
@@ -106,6 +121,10 @@ fixed_point_t fp_mul(fixed_point_t a, fixed_point_t b) {
             out.value.q31 = q31_mul(a.value.q31, b.value.q31);
             break;
 
+        case FP_Q7_8:
+            out.value.q7_8 = q7_8_mul(a.value.q7_8, b.value.q7_8);
+            break;
+
         default:
             out.value.q31 = 0;
             break;
@@ -127,6 +146,10 @@ fixed_point_t fp_div(fixed_point_t a, fixed_point_t b) {
 
         case FP_Q31:
             out.value.q31 = q31_div(a.value.q31, b.value.q31);
+            break;
+
+        case FP_Q7_8:
+            out.value.q7_8 = q7_8_div(a.value.q7_8, b.value.q7_8);
             break;
 
         default:

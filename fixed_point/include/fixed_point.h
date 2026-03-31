@@ -4,11 +4,13 @@
 #include <stdint.h>
 #include "Q15.h"
 #include "Q31.h"
+#include "Q7_8.h"
 
 // Supported fixed‑point formats
 typedef enum {
     FP_Q15,
-    FP_Q31
+    FP_Q31,
+    FP_Q7_8
     // add future formats here
 } fp_format_t;
 
@@ -18,6 +20,7 @@ typedef struct {
     union {
         q15_t q15;
         q31_t q31;
+        q7_8_t q7_8;
     } value;
 } fixed_point_t;
 
