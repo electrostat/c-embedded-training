@@ -23,7 +23,7 @@ typedef enum {
 
 typedef struct {
     json_token_type_t type;
-    const char *start;   // pointer into input buffer
+    const char *start;   // pointer to input buffer - no saving data/duplication
     size_t length;       // length of token
 } json_token_t;
 
