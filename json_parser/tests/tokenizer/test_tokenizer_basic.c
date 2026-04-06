@@ -87,6 +87,50 @@ void single_char_token_tests(){
     TEST_ASSERT(tok3.type == JSON_TOKEN_EOF, "EOF after {}");
 }
 
+void literal_true_test(void) {
+    const char *json = "true";
+    json_tokenizer_t t;
+    json_tokenizer_init(&t, json, strlen(json));
+
+    json_token_t tok = json_tokenizer_next(&t);
+    TEST_ASSERT(tok.type == JSON_TOKEN_TRUE, "true literal recognized");
+}
+
+void literal_false_test(void) {
+    const char *json = "false";
+    json_tokenizer_t t;
+    json_tokenizer_init(&t, json, strlen(json));
+
+    json_token_t tok = json_tokenizer_next(&t);
+    TEST_ASSERT(tok.type == JSON_TOKEN_FALSE, "false literal recognized");
+}
+
+void literal_null_test(void) {
+    const char *json = "null";
+    json_tokenizer_t t;
+    json_tokenizer_init(&t, json, strlen(json));
+
+    json_token_t tok = json_tokenizer_next(&t);
+    TEST_ASSERT(tok.type == JSON_TOKEN_NULL, "null literal recognized");
+}
+
+void literal_error_test(void) {
+    const char *json1 = "tru";
+    const char *json2 = "falze";
+    const char *json3 = "nulx";
+
+    json_tokenizer_t t;
+
+    json_tokenizer_init(&t, json1, strlen(json1));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "invalid true literal errors");
+
+    json_tokenizer_init(&t, json2, strlen(json2));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "invalid false literal errors");
+
+    json_tokenizer_init(&t, json3, strlen(json3));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "invalid null literal errors");
+}
+
 int main(void) {
     single_char_token_tests();
 
@@ -95,6 +139,12 @@ int main(void) {
     empty_string_test();
     escaped_quote_test();
     escaped_backslash_test();
+
+    //literal tests
+    literal_true_test();
+    literal_false_test();
+    literal_null_test();
+    literal_error_test();
 
     return 0;
 }

@@ -93,6 +93,59 @@ json_token_t json_tokenizer_next(json_tokenizer_t *t) {
         return tok;
     }
 
+    // Literal: true
+    if (c == 't') {
+        if (t->pos + 2 < t->length &&
+            t->input[t->pos] == 'r' &&
+            t->input[t->pos + 1] == 'u' &&
+            t->input[t->pos + 2] == 'e') {
+
+            t->pos += 3; // consumed r,u,e
+            tok.type = JSON_TOKEN_TRUE;
+            tok.start = &t->input[t->pos - 4]; // points to 't'
+            tok.length = 4;
+            return tok;
+        }
+        tok.type = JSON_TOKEN_ERROR;
+        return tok;
+    }
+
+    // Literal: false
+    if (c == 'f') {
+        if (t->pos + 3 < t->length &&
+            t->input[t->pos] == 'a' &&
+            t->input[t->pos + 1] == 'l' &&
+            t->input[t->pos + 2] == 's' &&
+            t->input[t->pos + 3] == 'e') {
+
+            t->pos += 4; // consumed a,l,s,e
+            tok.type = JSON_TOKEN_FALSE;
+            tok.start = &t->input[t->pos - 5];
+            tok.length = 5;
+            return tok;
+        }
+        tok.type = JSON_TOKEN_ERROR;
+        return tok;
+    }
+
+    // Literal: null
+    if (c == 'n') {
+        if (t->pos + 2 < t->length &&
+            t->input[t->pos] == 'u' &&
+            t->input[t->pos + 1] == 'l' &&
+            t->input[t->pos + 2] == 'l') {
+
+            t->pos += 3; // consumed u,l,l
+            tok.type = JSON_TOKEN_NULL;
+            tok.start = &t->input[t->pos - 4];
+            tok.length = 4;
+            return tok;
+        }
+        tok.type = JSON_TOKEN_ERROR;
+        return tok;
+    }
+
+
     //single character tokens
     switch (c) {
         case '{':
