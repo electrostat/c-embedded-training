@@ -18,33 +18,78 @@ json_token_t json_tokenizer_next(json_tokenizer_t *t) {
 
     char c = t->input[t->pos++];
 
-    // 1. Strings
+    // Strings
     if (c == '"') {
         size_t start_pos = t->pos; // first character after the quote
+        t->state = JSON_STATE_STRING;
 
         while (t->pos < t->length) {
             char ch = t->input[t->pos++];
 
-            //End of String
-            if (ch == '"') {
-                tok.type = JSON_TOKEN_STRING;
-                tok.start = &t->input[start_pos];
-                tok.length = (t->pos - 1) - start_pos; // exclude closing quote
-                return tok;
-            }
+            if (t->state == JSON_STATE_STRING) {
 
-            if (ch == '\\') {
-                // Skip escaped character for now
-                if (t->pos < t->length) {
-                    t->pos++;
+                //End of String
+                if (ch == '"') {
+                    tok.type = JSON_TOKEN_STRING;
+                    tok.start = &t->input[start_pos];
+                    tok.length = (t->pos - 1) - start_pos; // exclude closing quote
+                    return tok;
+                }
+
+                if (ch == '\\') {
+                    t->state = JSON_STATE_STRING_ESCAPE;
+                    continue;
+                }
+
+                // Control characters (0x00–0x1F) are illegal in JSON strings
+                if ((unsigned char)ch < 0x20) {
+                    tok.type = JSON_TOKEN_ERROR;
+                    return tok;
+                }
+
+                // Otherwise: normal character, continue scanning
+            } else if (t->state == JSON_STATE_STRING_ESCAPE) {
+
+                switch (ch) {
+                    case '"':
+                    case '\\':
+                    case '/':
+                    case 'b':
+                    case 'f':
+                    case 'n':
+                    case 'r':
+                    case 't':
+                        // Valid simple escape
+                        t->state = JSON_STATE_STRING;
+                        continue;
+
+                    case 'u':
+                        // Expect 4 hex digits
+                        if (t->pos + 4 > t->length) {
+                            tok.type = JSON_TOKEN_ERROR;
+                            return tok;
+                        }
+                        for (int i = 0; i < 4; i++) {
+                            char h = t->input[t->pos++];
+                            if (!((h >= '0' && h <= '9') ||
+                                (h >= 'A' && h <= 'F') ||
+                                (h >= 'a' && h <= 'f'))) {
+                                tok.type = JSON_TOKEN_ERROR;
+                                return tok;
+                            }
+                        }
+                        t->state = JSON_STATE_STRING;
+                        continue;
+
+                    default:
+                        tok.type = JSON_TOKEN_ERROR;
+                        return tok;
                 }
             }
         }
 
         // Unterminated string
         tok.type = JSON_TOKEN_ERROR;
-        tok.start = &t->input[start_pos];
-        tok.length = 0;
         return tok;
     }
 

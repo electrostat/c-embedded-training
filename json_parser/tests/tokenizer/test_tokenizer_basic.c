@@ -52,8 +52,7 @@ void escaped_quote_test(void) {
     TEST_ASSERT(tok.length == expected_len, "escaped quote length matches raw content length");
 
     // Compare content: tok.start points to h
-    TEST_ASSERT(strncmp(tok.start, "he\\\"llo" + 1, expected_len) == 0,
-                "escaped quote content matches raw buffer");
+    TEST_ASSERT(strncmp(tok.start, json + 1, expected_len) == 0, "escaped quote content matches raw buffer");
 }
 
 void escaped_backslash_test(void) {
@@ -70,8 +69,7 @@ void escaped_backslash_test(void) {
     size_t expected_len = raw_len - 2;
     TEST_ASSERT(tok.length == expected_len, "escaped backslash length matches");
 
-    TEST_ASSERT(strncmp(tok.start, "a\\\\b" + 1, expected_len) == 0,
-                "escaped backslash content matches raw buffer");
+    TEST_ASSERT(strncmp(tok.start, json + 1, expected_len) == 0,"escaped backslash content matches raw buffer");
 }
 
 void single_char_token_tests(){
