@@ -145,6 +145,73 @@ json_token_t json_tokenizer_next(json_tokenizer_t *t) {
         return tok;
     }
 
+    // Numbers
+    if (c == '-' || (c >= '0' && c <= '9')) {
+        size_t start = t->pos - 1; // include the first char we consumed
+
+        // Optional minus
+        if (c == '-') {
+            if (t->pos >= t->length) {
+                tok.type = JSON_TOKEN_ERROR;
+                return tok;
+            }
+            c = t->input[t->pos++];
+            if (!(c >= '0' && c <= '9')) {
+                tok.type = JSON_TOKEN_ERROR;
+                return tok;
+            }
+        }
+
+        // Integer part
+        if (c == '0') {
+            // Leading zero must not be followed by digits
+            if (t->pos < t->length && (t->input[t->pos] >= '0' && t->input[t->pos] <= '9')) {
+                tok.type = JSON_TOKEN_ERROR;
+                return tok;
+            }
+        } else {
+            while (t->pos < t->length) {
+                char d = t->input[t->pos];
+                if (d >= '0' && d <= '9') {
+                    t->pos++;
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Fraction
+        if (t->pos < t->length && t->input[t->pos] == '.') {
+            t->pos++;
+            if (t->pos >= t->length || !(t->input[t->pos] >= '0' && t->input[t->pos] <= '9')) {
+                tok.type = JSON_TOKEN_ERROR;
+                return tok;
+            }
+            while (t->pos < t->length && (t->input[t->pos] >= '0' && t->input[t->pos] <= '9')) {
+                t->pos++;
+            }
+        }
+
+        // Exponent
+        if (t->pos < t->length && (t->input[t->pos] == 'e' || t->input[t->pos] == 'E')) {
+            t->pos++;
+            if (t->pos < t->length && (t->input[t->pos] == '+' || t->input[t->pos] == '-')) {
+                t->pos++;
+            }
+            if (t->pos >= t->length || !(t->input[t->pos] >= '0' && t->input[t->pos] <= '9')) {
+                tok.type = JSON_TOKEN_ERROR;
+                return tok;
+            }
+            while (t->pos < t->length && (t->input[t->pos] >= '0' && t->input[t->pos] <= '9')) {
+                t->pos++;
+            }
+        }
+
+        tok.type = JSON_TOKEN_NUMBER;
+        tok.start = &t->input[start];
+        tok.length = t->pos - start;
+        return tok;
+    }
 
     //single character tokens
     switch (c) {

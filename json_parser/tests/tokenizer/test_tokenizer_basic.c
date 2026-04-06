@@ -131,6 +131,69 @@ void literal_error_test(void) {
     TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "invalid null literal errors");
 }
 
+void number_basic_test(void) {
+    const char *json = "123";
+    json_tokenizer_t t;
+    json_tokenizer_init(&t, json, strlen(json));
+
+    json_token_t tok = json_tokenizer_next(&t);
+    TEST_ASSERT(tok.type == JSON_TOKEN_NUMBER, "basic integer recognized");
+    TEST_ASSERT(strncmp(tok.start, "123", 3) == 0, "integer content matches");
+}
+
+void number_negative_test(void) {
+    const char *json = "-42";
+    json_tokenizer_t t;
+    json_tokenizer_init(&t, json, strlen(json));
+
+    json_token_t tok = json_tokenizer_next(&t);
+    TEST_ASSERT(tok.type == JSON_TOKEN_NUMBER, "negative integer recognized");
+}
+
+void number_decimal_test(void) {
+    const char *json = "3.14";
+    json_tokenizer_t t;
+    json_tokenizer_init(&t, json, strlen(json));
+
+    json_token_t tok = json_tokenizer_next(&t);
+    TEST_ASSERT(tok.type == JSON_TOKEN_NUMBER, "decimal recognized");
+}
+
+void number_exponent_test(void) {
+    const char *json = "1e10";
+    json_tokenizer_t t;
+    json_tokenizer_init(&t, json, strlen(json));
+
+    json_token_t tok = json_tokenizer_next(&t);
+    TEST_ASSERT(tok.type == JSON_TOKEN_NUMBER, "exponent recognized");
+}
+
+void number_invalid_test(void) {
+    const char *bad1 = "01";
+    const char *bad2 = "1.";
+    const char *bad3 = ".5";
+    const char *bad4 = "1e";
+    const char *bad5 = "--1";
+
+    json_tokenizer_t t;
+
+    json_tokenizer_init(&t, bad1, strlen(bad1));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "leading zero invalid");
+
+    json_tokenizer_init(&t, bad2, strlen(bad2));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "decimal missing digits invalid");
+
+    json_tokenizer_init(&t, bad3, strlen(bad3));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "leading decimal invalid");
+
+    json_tokenizer_init(&t, bad4, strlen(bad4));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "exponent missing digits invalid");
+
+    json_tokenizer_init(&t, bad5, strlen(bad5));
+    TEST_ASSERT(json_tokenizer_next(&t).type == JSON_TOKEN_ERROR, "double minus invalid");
+}
+
+
 int main(void) {
     single_char_token_tests();
 
@@ -145,6 +208,13 @@ int main(void) {
     literal_false_test();
     literal_null_test();
     literal_error_test();
+
+    //number tests
+    number_basic_test();
+    number_negative_test();
+    number_decimal_test();
+    number_exponent_test();
+    number_invalid_test();
 
     return 0;
 }
