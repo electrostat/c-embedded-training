@@ -136,8 +136,144 @@ void test_simple_object(void) {
     printf("PASS: simple object parsing\n");
 }
 
+void test_empty_object(void) {
+    const char *json = "{}";
+    event_log_t log = {0};
+
+    json_parser_t p;
+    json_parser_init(&p, json, strlen(json), make_callbacks(), &log);
+    json_parser_parse(&p);
+
+    if (log.count != 2 ||
+        log.events[0].type != EVENT_OBJ_BEGIN ||
+        log.events[1].type != EVENT_OBJ_END) {
+        printf("FAIL: empty object\n");
+        return;
+    }
+
+    printf("PASS: empty object\n");
+}
+
+void test_simple_array(void) {
+    const char *json = "[1,2,3]";
+    event_log_t log = {0};
+
+    json_parser_t p;
+    json_parser_init(&p, json, strlen(json), make_callbacks(), &log);
+    json_parser_parse(&p);
+
+    if (log.count != 5 ||
+        log.events[0].type != EVENT_ARRAY_BEGIN ||
+        log.events[1].type != EVENT_NUMBER ||
+        strcmp(log.events[1].text, "1") != 0 ||
+        log.events[2].type != EVENT_NUMBER ||
+        strcmp(log.events[2].text, "2") != 0 ||
+        log.events[3].type != EVENT_NUMBER ||
+        strcmp(log.events[3].text, "3") != 0 ||
+        log.events[4].type != EVENT_ARRAY_END) {
+        printf("FAIL: simple array\n");
+        return;
+    }
+
+    printf("PASS: simple array\n");
+}
+
+void test_nested_object(void) {
+    const char *json = "{\"a\":{\"b\":2}}";
+    event_log_t log = {0};
+
+    json_parser_t p;
+    json_parser_init(&p, json, strlen(json), make_callbacks(), &log);
+    json_parser_parse(&p);
+
+    if (log.count != 7 ||
+        log.events[0].type != EVENT_OBJ_BEGIN ||
+        log.events[1].type != EVENT_KEY ||
+        strcmp(log.events[1].text, "a") != 0 ||
+        log.events[2].type != EVENT_OBJ_BEGIN ||
+        log.events[3].type != EVENT_KEY ||
+        strcmp(log.events[3].text, "b") != 0 ||
+        log.events[4].type != EVENT_NUMBER ||
+        strcmp(log.events[4].text, "2") != 0 ||
+        log.events[5].type != EVENT_OBJ_END ||
+        log.events[6].type != EVENT_OBJ_END) {
+        printf("FAIL: nested object\n");
+        return;
+    }
+
+    printf("PASS: nested object\n");
+}
+
+void test_mixed_types(void) {
+    const char *json = "{\"a\":[1,true,null,\"x\"]}";
+    event_log_t log = {0};
+
+    json_parser_t p;
+    json_parser_init(&p, json, strlen(json), make_callbacks(), &log);
+    json_parser_parse(&p);
+
+    if (log.count != 9 ||
+        log.events[0].type != EVENT_OBJ_BEGIN ||
+        log.events[1].type != EVENT_KEY ||
+        strcmp(log.events[1].text, "a") != 0 ||
+        log.events[2].type != EVENT_ARRAY_BEGIN ||
+        log.events[3].type != EVENT_NUMBER ||
+        strcmp(log.events[3].text, "1") != 0 ||
+        log.events[4].type != EVENT_BOOL ||
+        strcmp(log.events[4].text, "true") != 0 ||
+        log.events[5].type != EVENT_NULL ||
+        log.events[6].type != EVENT_STRING ||
+        strcmp(log.events[6].text, "x") != 0 ||
+        log.events[7].type != EVENT_ARRAY_END ||
+        log.events[8].type != EVENT_OBJ_END) {
+        printf("FAIL: mixed types\n");
+        return;
+    }
+
+    printf("PASS: mixed types\n");
+}
+
+void test_error_missing_colon(void) {
+    const char *json = "{\"a\" 1}";
+    event_log_t log = {0};
+
+    json_parser_t p;
+    json_parser_init(&p, json, strlen(json), make_callbacks(), &log);
+    json_parser_parse(&p);
+
+    if (!p.error) {
+        printf("FAIL: missing colon should error\n");
+        return;
+    }
+
+    printf("PASS: error missing colon\n");
+}
+
+void test_error_missing_comma(void) {
+    const char *json = "{\"a\":1 \"b\":2}";
+    event_log_t log = {0};
+
+    json_parser_t p;
+    json_parser_init(&p, json, strlen(json), make_callbacks(), &log);
+    json_parser_parse(&p);
+
+    if (!p.error) {
+        printf("FAIL: missing comma should error\n");
+        return;
+    }
+
+    printf("PASS: error missing comma\n");
+}
+
+
 int main(void) {
     test_parser_initialization();
     test_simple_object();
+    test_empty_object();
+    test_simple_array();
+    test_nested_object();
+    test_mixed_types();
+    test_error_missing_colon();
+    test_error_missing_comma();
     return 0;
 }

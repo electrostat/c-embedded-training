@@ -120,6 +120,30 @@ static void handle_null(json_parser_t *p) {
     p->state = JSON_PARSER_EXPECT_COMMA_OR_END;
 }
 
+static void handle_colon(json_parser_t *p) {
+    if (p->state != JSON_PARSER_EXPECT_COLON) {
+        p->error = true;
+        return;
+    }
+
+    p->state = JSON_PARSER_EXPECT_VALUE;
+}
+
+static void handle_comma(json_parser_t *p) {
+    if (p->state != JSON_PARSER_EXPECT_COMMA_OR_END) {
+        p->error = true;
+        return;
+    }
+
+    json_context_t ctx = p->stack.stack[p->stack.depth - 1];
+
+    if (ctx == JSON_CONTEXT_OBJECT) {
+        p->state = JSON_PARSER_EXPECT_KEY;
+    } else {
+        p->state = JSON_PARSER_EXPECT_VALUE;
+    }
+}
+
 
 void json_parser_parse(json_parser_t *p) {
     while (!p->error) {
