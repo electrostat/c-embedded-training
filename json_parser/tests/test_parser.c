@@ -265,6 +265,30 @@ void test_error_missing_comma(void) {
     printf("PASS: error missing comma\n");
 }
 
+void test_convenience_api(void) {
+    const char *json = "{\"a\":1}";
+    event_log_t log = {0};
+
+    bool ok = json_parse(json, strlen(json), make_callbacks(), &log);
+
+    if (!ok) {
+        printf("FAIL: convenience API returned error\n");
+        return;
+    }
+
+    if (log.count != 4 ||
+        log.events[0].type != EVENT_OBJ_BEGIN ||
+        log.events[1].type != EVENT_KEY ||
+        strcmp(log.events[1].text, "a") != 0 ||
+        log.events[2].type != EVENT_NUMBER ||
+        strcmp(log.events[2].text, "1") != 0 ||
+        log.events[3].type != EVENT_OBJ_END) {
+        printf("FAIL: convenience API event sequence\n");
+        return;
+    }
+
+    printf("PASS: convenience API\n");
+}
 
 int main(void) {
     test_parser_initialization();
@@ -275,5 +299,6 @@ int main(void) {
     test_mixed_types();
     test_error_missing_colon();
     test_error_missing_comma();
+    test_convenience_api();
     return 0;
 }

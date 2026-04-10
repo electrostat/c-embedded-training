@@ -56,5 +56,6 @@ typedef struct {
 void json_parser_init(json_parser_t *p, const char *input, size_t length, json_parser_callbacks_t cb,
                       void *user_ctx);
 void json_parser_parse(json_parser_t *p);
+bool json_parse(const char *input, size_t length, json_parser_callbacks_t cb, void *user_ctx);
 
 #endif
