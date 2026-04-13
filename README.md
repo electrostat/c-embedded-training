@@ -48,6 +48,31 @@ Features:
 Useful as a foundational building block for drivers, streaming interfaces, and ISR-safe queues.
 
 ---
+### **JSON Parser** 
+(SAX‑Style, Embedded‑Friendly)
+
+A zero‑allocation, deterministic JSON parser built around a clean SAX‑style event interface.
+This module focuses on correctness, predictability, and embedded suitability rather than general‑purpose flexibility.
+
+Features:
+- Event‑driven parsing: 
+    Emits callbacks for object/array boundaries, keys, strings, numbers, booleans, and null values.
+    Ideal for streaming, low‑memory, or incremental processing.
+- Deterministic state machine:   
+    Explicit grammar enforcement using well‑defined parser states (EXPECT_VALUE, EXPECT_KEY, EXPECT_COLON, EXPECT_COMMA_OR_END).
+    Rejects malformed JSON early and predictably.
+- Zero dynamic memory:  
+    Uses a fixed‑depth context stack for nested structures.
+    No heap usage, no hidden allocations, and no surprises.
+- Convenience API:  
+    A simple one‑shot function wraps initialization and parsing for straightforward use
+- Comprehensive test suite:  
+    Covers basic objects, arrays, nested structures, mixed types, and error cases.
+    Ensures correctness and stability before future extensions.
+
+This module lays the groundwork for future embedded-focused features such as streaming input, incremental parsing, and optional DOM or writer layers. Each will be kept modular and be intentionally scoped.
+
+---
 
 ## Philosophy
 
