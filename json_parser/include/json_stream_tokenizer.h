@@ -23,9 +23,15 @@ typedef struct json_stream_tokenizer {
 
     char partial[128];
     size_t partial_len;
+    bool using_partial;
 
     bool in_string;
     bool in_escape;
+
+    bool in_number;
+    bool in_literal;
+    char literal_buf[5];
+    size_t literal_len;
 } json_stream_tokenizer_t;
 
 void json_stream_tokenizer_init(json_stream_tokenizer_t *t);
