@@ -249,146 +249,97 @@ static json_stream_token_result_t emit_punctuation_token(json_stream_tokenizer_t
 }
 
 //literal code
+static bool literal_is_complete(json_stream_tokenizer_t *t, json_stream_token_result_t *r) {
+    if (t->literal_len == 4 &&
+        memcmp(t->literal_buf, "true", 4) == 0) {
+        r->token.type = JSON_TOKEN_TRUE;
+        r->token.start = t->literal_buf;
+        r->token.length = 4;
+        r->status = JSON_STREAM_TOKEN_OK;
+        return true;
+    }
+
+    if (t->literal_len == 5 &&
+        memcmp(t->literal_buf, "false", 5) == 0) {
+        r->token.type = JSON_TOKEN_FALSE;
+        r->token.start = t->literal_buf;
+        r->token.length = 5;
+        r->status = JSON_STREAM_TOKEN_OK;
+        return true;
+    }
+
+    if (t->literal_len == 4 &&
+        memcmp(t->literal_buf, "null", 4) == 0) {
+        r->token.type = JSON_TOKEN_NULL;
+        r->token.start = t->literal_buf;
+        r->token.length = 4;
+        r->status = JSON_STREAM_TOKEN_OK;
+        return true;
+    }
+
+    return false;
+}
+
 static json_stream_token_result_t start_literal_token(json_stream_tokenizer_t *t) {
     json_stream_token_result_t r = {0};
 
-    char c = t->buf[t->pos++];
-    size_t start = t->pos;
+    t->in_literal = true;
+    t->literal_len = 0;
 
-    // Literal: true
-    if (c == 't') {
-        if (t->pos + 2 < t->len &&
-            t->buf[t->pos] == 'r' &&
-            t->buf[t->pos + 1] == 'u' &&
-            t->buf[t->pos + 2] == 'e') {
+    /* Process as much as we can from this chunk */
+    while (t->pos < t->len && t->literal_len < sizeof(t->literal_buf)) {
+        char c = t->buf[t->pos];
 
-            t->pos += 3; // consumed r,u,e
-            r.token.type = JSON_TOKEN_TRUE;
-            r.token.start = &t->buf[t->pos - 4]; // points to 't'
-            r.token.length = 4;
-            return r;
+        if ((c >= 'a' && c <= 'z')) {
+            t->literal_buf[t->literal_len++] = c;
+            t->pos++;
+        } else {
+            break;
         }
-        r.token.type = JSON_TOKEN_ERROR;
+    }
+
+    /* If literal is complete, emit */
+    if (literal_is_complete(t, &r)) {
+        t->in_literal = false;
         return r;
     }
 
-    // Literal: false
-    if (c == 'f') {
-        if (t->pos + 3 < t->len &&
-            t->buf[t->pos] == 'a' &&
-            t->buf[t->pos + 1] == 'l' &&
-            t->buf[t->pos + 2] == 's' &&
-            t->buf[t->pos + 3] == 'e') {
-
-            t->pos += 4; // consumed a,l,s,e
-            r.token.type = JSON_TOKEN_FALSE;
-            r.token.start = &t->buf[t->pos - 5];
-            r.token.length = 5;
-            return r;
-        }
-        r.token.type = JSON_TOKEN_ERROR;
+    /* If we ran out of chunk, need more */
+    if (t->pos >= t->len && !t->end_of_stream) {
+        r.status = JSON_STREAM_TOKEN_NEED_MORE;
         return r;
     }
 
-    // Literal: null
-    if (c == 'n') {
-        if (t->pos + 2 < t->len &&
-            t->buf[t->pos] == 'u' &&
-            t->buf[t->pos + 1] == 'l' &&
-            t->buf[t->pos + 2] == 'l') {
-
-            t->pos += 3; // consumed u,l,l
-            r.token.type = JSON_TOKEN_NULL;
-            r.token.start = &t->buf[t->pos - 4];
-            r.token.length = 4;
-            return r;
-        }
-        r.token.type = JSON_TOKEN_ERROR;
-        return r;
-    }
-
-    /* Ran out of chunk before closing quote */
-    size_t chunk_len = t->pos - start;
-    if (chunk_len > sizeof(t->partial)) {
-        r.status = JSON_STREAM_TOKEN_ERROR;
-        return r;
-    }
-
-    memcpy(t->partial, &t->buf[start], chunk_len);
-    t->partial_len = chunk_len;
-    t->using_partial = true;
-
-    r.status = JSON_STREAM_TOKEN_NEED_MORE;
+    /* If we hit a non-literal char but literal isn't valid */
+    r.status = JSON_STREAM_TOKEN_ERROR;
     return r;
 }
 
 static json_stream_token_result_t resume_literal_token(json_stream_tokenizer_t *t) {
     json_stream_token_result_t r = {0};
 
-    char c = t->buf[t->pos++];
-    size_t start = t->pos;
+    while (t->pos < t->len && t->literal_len < sizeof(t->literal_buf)) {
+        char c = t->buf[t->pos];
 
-    // Literal: true
-    if (c == 't') {
-        if (t->pos + 2 < t->len &&
-            t->buf[t->pos] == 'r' &&
-            t->buf[t->pos + 1] == 'u' &&
-            t->buf[t->pos + 2] == 'e') {
-
-            t->pos += 3; // consumed r,u,e
-            r.token.type = JSON_TOKEN_TRUE;
-            r.token.start = &t->buf[t->pos - 4]; // points to 't'
-            r.token.length = 4;
-            return r;
+        if ((c >= 'a' && c <= 'z')) {
+            t->literal_buf[t->literal_len++] = c;
+            t->pos++;
+        } else {
+            break;
         }
-        r.token.type = JSON_TOKEN_ERROR;
+    }
+
+    if (literal_is_complete(t, &r)) {
+        t->in_literal = false;
         return r;
     }
 
-    // Literal: false
-    if (c == 'f') {
-        if (t->pos + 3 < t->len &&
-            t->buf[t->pos] == 'a' &&
-            t->buf[t->pos + 1] == 'l' &&
-            t->buf[t->pos + 2] == 's' &&
-            t->buf[t->pos + 3] == 'e') {
-
-            t->pos += 4; // consumed a,l,s,e
-            r.token.type = JSON_TOKEN_FALSE;
-            r.token.start = &t->buf[t->pos - 5];
-            r.token.length = 5;
-            return r;
-        }
-        r.token.type = JSON_TOKEN_ERROR;
+    if (t->pos >= t->len && !t->end_of_stream) {
+        r.status = JSON_STREAM_TOKEN_NEED_MORE;
         return r;
     }
 
-    // Literal: null
-    if (c == 'n') {
-        if (t->pos + 2 < t->len &&
-            t->buf[t->pos] == 'u' &&
-            t->buf[t->pos + 1] == 'l' &&
-            t->buf[t->pos + 2] == 'l') {
-
-            t->pos += 3; // consumed u,l,l
-            r.token.type = JSON_TOKEN_NULL;
-            r.token.start = &t->buf[t->pos - 4];
-            r.token.length = 4;
-            return r;
-        }
-        r.token.type = JSON_TOKEN_ERROR;
-        return r;
-    }
-
-    /* Ran out of chunk before closing quote */
-    size_t chunk_len = t->pos - start;
-    if (chunk_len > sizeof(t->partial)) {
-        r.status = JSON_STREAM_TOKEN_ERROR;
-        return r;
-    }
-
-    /* Still no closing quote */
-    r.status = JSON_STREAM_TOKEN_NEED_MORE;
+    r.status = JSON_STREAM_TOKEN_ERROR;
     return r;
 }
 
