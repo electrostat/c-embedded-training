@@ -82,6 +82,7 @@ static json_stream_token_result_t start_string_token(json_stream_tokenizer_t *t)
     size_t chunk_len = t->pos - start;
     if (chunk_len > sizeof(t->partial)) {
         r.status = JSON_STREAM_TOKEN_ERROR;
+        r.token.type = JSON_TOKEN_ERROR;
         return r;
     }
 
@@ -104,6 +105,7 @@ static json_stream_token_result_t resume_string_token(json_stream_tokenizer_t *t
             if (t->using_partial) {
                 if (t->partial_len >= sizeof(t->partial)) {
                     r.status = JSON_STREAM_TOKEN_ERROR;
+                    r.token.type = JSON_TOKEN_ERROR;
                     return r;
                 }
                 t->partial[t->partial_len++] = c;
@@ -117,6 +119,7 @@ static json_stream_token_result_t resume_string_token(json_stream_tokenizer_t *t
             if (t->using_partial) {
                 if (t->partial_len >= sizeof(t->partial)) {
                     r.status = JSON_STREAM_TOKEN_ERROR;
+                    r.token.type = JSON_TOKEN_ERROR;
                     return r;
                 }
                 t->partial[t->partial_len++] = c;
@@ -140,6 +143,7 @@ static json_stream_token_result_t resume_string_token(json_stream_tokenizer_t *t
             } else {
                 /* rare case: started in previous chunk but never used partial */
                 r.status = JSON_STREAM_TOKEN_ERROR;
+                r.token.type = JSON_TOKEN_ERROR;
                 return r;
             }
 
@@ -151,6 +155,7 @@ static json_stream_token_result_t resume_string_token(json_stream_tokenizer_t *t
         if (t->using_partial) {
             if (t->partial_len >= sizeof(t->partial)) {
                 r.status = JSON_STREAM_TOKEN_ERROR;
+                r.token.type = JSON_TOKEN_ERROR;
                 return r;
             }
             t->partial[t->partial_len++] = c;
@@ -197,6 +202,7 @@ static json_stream_token_result_t start_number_token(json_stream_tokenizer_t *t)
     size_t chunk_len = t->pos - start;
     if (chunk_len > sizeof(t->partial)) {
         r.status = JSON_STREAM_TOKEN_ERROR;
+        r.token.type = JSON_TOKEN_ERROR;
         return r;
     }
 
@@ -214,6 +220,7 @@ static json_stream_token_result_t resume_number_token(json_stream_tokenizer_t *t
     while (t->pos < t->len && is_number_char(t->buf[t->pos])) {
         if (t->partial_len >= sizeof(t->partial)) {
             r.status = JSON_STREAM_TOKEN_ERROR;
+            r.token.type = JSON_TOKEN_ERROR;
             return r;
         }
         t->partial[t->partial_len++] = t->buf[t->pos];
@@ -326,14 +333,15 @@ static json_stream_token_result_t start_literal_token(json_stream_tokenizer_t *t
         return r;
     }
 
-    /* If we ran out of chunk, need more */
+    /* ran out of chunk, need more */
     if (t->pos >= t->len && !t->end_of_stream) {
         r.status = JSON_STREAM_TOKEN_NEED_MORE;
         return r;
     }
 
-    /* If we hit a non-literal char but literal isn't valid */
+    /* If a non-literal char but literal isn't valid */
     r.status = JSON_STREAM_TOKEN_ERROR;
+    r.token.type = JSON_TOKEN_ERROR;
     return r;
 }
 
@@ -363,6 +371,7 @@ static json_stream_token_result_t resume_literal_token(json_stream_tokenizer_t *
     }
 
     r.status = JSON_STREAM_TOKEN_ERROR;
+    r.token.type = JSON_TOKEN_ERROR;
     return r;
 }
 
@@ -377,6 +386,7 @@ static json_stream_token_result_t resume_in_progress_token(json_stream_tokenizer
 
     json_stream_token_result_t r = {0};
     r.status = JSON_STREAM_TOKEN_ERROR;
+    r.token.type = JSON_TOKEN_ERROR;
     return r;
 }
 
