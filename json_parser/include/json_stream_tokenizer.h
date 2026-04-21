@@ -1,6 +1,9 @@
 #ifndef JSON_STREAM_TOKENIZER_H
 #define JSON_STREAM_TOKENIZER_H
 #include "json_token.h"
+#include <string.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 typedef enum {
     JSON_STREAM_TOKEN_OK,

@@ -10,12 +10,25 @@ void json_stream_tokenizer_init(json_stream_tokenizer_t *t) {
     t->partial_len = 0;
     t->in_string = false;
     t->in_escape = false;
+
+    t->in_number = false;
+    t->in_literal = false;
+    t->using_partial = false;
+    t->literal_len = 0;
 }
 
 void json_stream_tokenizer_feed(json_stream_tokenizer_t *t, const char *data, size_t len) {
     t->buf = data;
     t->len = len;
     t->pos = 0;
+}
+
+static inline bool is_json_whitespace(unsigned char c) {
+    return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+
+static inline bool is_digit(char c) {
+    return c >= '0' && c <= '9';
 }
 
 static json_stream_token_result_t start_string_token(json_stream_tokenizer_t *t) {
@@ -52,6 +65,8 @@ static json_stream_token_result_t start_string_token(json_stream_tokenizer_t *t)
             size_t end = t->pos;
             t->pos++;          /* consume closing quote */
             t->in_string = false;
+            t->using_partial = false;
+            t->partial_len = 0;
 
             r.token.type = JSON_TOKEN_STRING;
             r.token.start = &t->buf[start];
@@ -114,6 +129,8 @@ static json_stream_token_result_t resume_string_token(json_stream_tokenizer_t *t
             /* closing quote */
             t->pos++;
             t->in_string = false;
+            t->using_partial = false;
+            t->partial_len = 0;
 
             r.token.type = JSON_TOKEN_STRING;
 
@@ -166,6 +183,8 @@ static json_stream_token_result_t start_number_token(json_stream_tokenizer_t *t)
     if (t->pos < t->len) {
         /* token ends in this chunk */
         t->in_number = false;
+        t->using_partial = false;
+        t->partial_len = 0;
 
         r.token.type = JSON_TOKEN_NUMBER;
         r.token.start = &t->buf[start];
@@ -207,6 +226,8 @@ static json_stream_token_result_t resume_number_token(json_stream_tokenizer_t *t
     }
 
     t->in_number = false;
+    t->using_partial = false;
+    t->partial_len = 0;
 
     r.token.type = JSON_TOKEN_NUMBER;
     r.token.start = t->partial;
@@ -301,6 +322,7 @@ static json_stream_token_result_t start_literal_token(json_stream_tokenizer_t *t
     /* If literal is complete, emit */
     if (literal_is_complete(t, &r)) {
         t->in_literal = false;
+        t->literal_len = 0;
         return r;
     }
 
@@ -331,6 +353,7 @@ static json_stream_token_result_t resume_literal_token(json_stream_tokenizer_t *
 
     if (literal_is_complete(t, &r)) {
         t->in_literal = false;
+        t->literal_len = 0;
         return r;
     }
 
@@ -339,6 +362,20 @@ static json_stream_token_result_t resume_literal_token(json_stream_tokenizer_t *
         return r;
     }
 
+    r.status = JSON_STREAM_TOKEN_ERROR;
+    return r;
+}
+
+static json_stream_token_result_t resume_in_progress_token(json_stream_tokenizer_t *t) {
+    if (t->in_string) {
+        return resume_string_token(t);
+    } else if (t->in_number) {
+        return resume_number_token(t);
+    } else if (t->in_literal) {
+        return resume_literal_token(t);
+    }
+
+    json_stream_token_result_t r = {0};
     r.status = JSON_STREAM_TOKEN_ERROR;
     return r;
 }
@@ -381,20 +418,6 @@ json_stream_token_result_t json_stream_tokenizer_next(json_stream_tokenizer_t *t
         r.status = JSON_STREAM_TOKEN_ERROR;
         return r;
     }
-}
-
-static json_stream_token_result_t resume_in_progress_token(json_stream_tokenizer_t *t) {
-    if (t->in_string) {
-        return resume_string_token(t);
-    } else if (t->in_number) {
-        return resume_number_token(t);
-    } else if (t->in_literal) {
-        return resume_literal_token(t);
-    }
-
-    json_stream_token_result_t r = {0};
-    r.status = JSON_STREAM_TOKEN_ERROR;
-    return r;
 }
 
 void json_stream_tokenizer_end(json_stream_tokenizer_t *t) {
