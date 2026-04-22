@@ -35,6 +35,9 @@ typedef struct json_stream_tokenizer {
     bool in_literal;
     char literal_buf[5];
     size_t literal_len;
+
+    char token_buf[256];
+    size_t token_len;
 } json_stream_tokenizer_t;
 
 void json_stream_tokenizer_init(json_stream_tokenizer_t *t);

@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include "json_parser.h"
+#include "json_stream_tokenizer.h"
 
 typedef enum {
     JSON_STREAM_PARSER_OK,

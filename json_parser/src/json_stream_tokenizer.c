@@ -1,4 +1,5 @@
 #include "json_stream_tokenizer.h"
+#include <stdio.h>
 
 void json_stream_tokenizer_init(json_stream_tokenizer_t *t) {
     t->buf = NULL;
@@ -31,6 +32,30 @@ static inline bool is_digit(char c) {
     return c >= '0' && c <= '9';
 }
 
+static inline json_stream_token_result_t finish_token(json_stream_tokenizer_t *t, 
+    json_token_type_t type, const char *src, size_t len) {
+    json_stream_token_result_t r = {0};
+
+    if (len > sizeof(t->token_buf)) {
+        r.status = JSON_STREAM_TOKEN_ERROR;
+        r.token.type = JSON_TOKEN_ERROR;
+        return r;
+    }
+
+    memcpy(t->token_buf, src, len);
+    t->token_len = len;
+
+    r.token.type = type;
+    r.token.start = t->token_buf;
+    r.token.length = len;
+    r.status = JSON_STREAM_TOKEN_OK;
+
+    printf("[TOKENIZER] STRING/NUMBER/LITERAL token emitted: ptr=%p len=%zu text='%.*s'\n",
+           r.token.start, r.token.length, (int)r.token.length, r.token.start);
+
+    return r;
+}
+
 static json_stream_token_result_t start_string_token(json_stream_tokenizer_t *t) {
     json_stream_token_result_t r = {0};
 
@@ -47,15 +72,33 @@ static json_stream_token_result_t start_string_token(json_stream_tokenizer_t *t)
     while (t->pos < t->len) {
         char c = t->buf[t->pos];
 
-        if (t->in_escape) {
-            /* accept this char as escape payload */
-            t->in_escape = false;
+        if (c == '\\') {
+            t->in_escape = true;
+            t->using_partial = true; 
             t->pos++;
             continue;
         }
 
-        if (c == '\\') {
-            t->in_escape = true;
+        if (t->in_escape) {
+            t->in_escape = false;
+
+            // Only implement \" for now
+            if (c == '"') {
+                t->partial[t->partial_len++] = '"';
+            } else if (c == '\\') {
+                t->partial[t->partial_len++] = '\\';
+            } else {
+                // Unsupported escape for now
+                t->partial[t->partial_len++] = c;
+            }
+
+            t->using_partial = true;
+            t->pos++;
+            continue;
+        }
+
+        if (t->using_partial) {
+            t->partial[t->partial_len++] = c;
             t->pos++;
             continue;
         }
@@ -65,14 +108,12 @@ static json_stream_token_result_t start_string_token(json_stream_tokenizer_t *t)
             size_t end = t->pos;
             t->pos++;          /* consume closing quote */
             t->in_string = false;
-            t->using_partial = false;
-            t->partial_len = 0;
 
-            r.token.type = JSON_TOKEN_STRING;
-            r.token.start = &t->buf[start];
-            r.token.length = end - start;
-            r.status = JSON_STREAM_TOKEN_OK;
-            return r;
+            if (t->using_partial) {
+                return finish_token(t, JSON_TOKEN_STRING, t->partial, t->partial_len);
+            } else {
+                return finish_token(t, JSON_TOKEN_STRING, &t->buf[start], end - start);
+            }
         }
 
         t->pos++;
@@ -100,30 +141,25 @@ static json_stream_token_result_t resume_string_token(json_stream_tokenizer_t *t
     while (t->pos < t->len) {
         char c = t->buf[t->pos];
 
-        if (t->in_escape) {
-            t->in_escape = false;
-            if (t->using_partial) {
-                if (t->partial_len >= sizeof(t->partial)) {
-                    r.status = JSON_STREAM_TOKEN_ERROR;
-                    r.token.type = JSON_TOKEN_ERROR;
-                    return r;
-                }
-                t->partial[t->partial_len++] = c;
-            }
+        if (c == '\\') {
+            t->in_escape = true;
             t->pos++;
             continue;
         }
 
-        if (c == '\\') {
-            t->in_escape = true;
-            if (t->using_partial) {
-                if (t->partial_len >= sizeof(t->partial)) {
-                    r.status = JSON_STREAM_TOKEN_ERROR;
-                    r.token.type = JSON_TOKEN_ERROR;
-                    return r;
-                }
+        if (t->in_escape) {
+            t->in_escape = false;
+
+            // Only implement \" for now
+            if (c == '"') {
+                t->partial[t->partial_len++] = '"';
+            } else if (c == '\\') {
+                t->partial[t->partial_len++] = '\\';
+            } else {
+                // Unsupported escape for now
                 t->partial[t->partial_len++] = c;
             }
+
             t->pos++;
             continue;
         }
@@ -132,23 +168,8 @@ static json_stream_token_result_t resume_string_token(json_stream_tokenizer_t *t
             /* closing quote */
             t->pos++;
             t->in_string = false;
-            t->using_partial = false;
-            t->partial_len = 0;
 
-            r.token.type = JSON_TOKEN_STRING;
-
-            if (t->using_partial) {
-                r.token.start = t->partial;
-                r.token.length = t->partial_len;
-            } else {
-                /* rare case: started in previous chunk but never used partial */
-                r.status = JSON_STREAM_TOKEN_ERROR;
-                r.token.type = JSON_TOKEN_ERROR;
-                return r;
-            }
-
-            r.status = JSON_STREAM_TOKEN_OK;
-            return r;
+            return finish_token(t, JSON_TOKEN_STRING, t->partial, t->partial_len);
         }
 
         /* regular char */
@@ -191,11 +212,7 @@ static json_stream_token_result_t start_number_token(json_stream_tokenizer_t *t)
         t->using_partial = false;
         t->partial_len = 0;
 
-        r.token.type = JSON_TOKEN_NUMBER;
-        r.token.start = &t->buf[start];
-        r.token.length = t->pos - start;
-        r.status = JSON_STREAM_TOKEN_OK;
-        return r;
+        return finish_token(t, JSON_TOKEN_NUMBER, &t->buf[start], t->pos - start);
     }
 
     /* ran out of chunk mid-number */
@@ -236,11 +253,7 @@ static json_stream_token_result_t resume_number_token(json_stream_tokenizer_t *t
     t->using_partial = false;
     t->partial_len = 0;
 
-    r.token.type = JSON_TOKEN_NUMBER;
-    r.token.start = t->partial;
-    r.token.length = t->partial_len;
-    r.status = JSON_STREAM_TOKEN_OK;
-    return r;
+    return finish_token(t,JSON_TOKEN_NUMBER, t->partial, t->partial_len);
 }
 
 static bool is_punctuation(char c) {
@@ -278,30 +291,18 @@ static json_stream_token_result_t emit_punctuation_token(json_stream_tokenizer_t
 
 //literal code
 static bool literal_is_complete(json_stream_tokenizer_t *t, json_stream_token_result_t *r) {
-    if (t->literal_len == 4 &&
-        memcmp(t->literal_buf, "true", 4) == 0) {
-        r->token.type = JSON_TOKEN_TRUE;
-        r->token.start = t->literal_buf;
-        r->token.length = 4;
-        r->status = JSON_STREAM_TOKEN_OK;
+    if (t->literal_len == 4 && memcmp(t->literal_buf, "true", 4) == 0) {
+        *r = finish_token(t, JSON_TOKEN_TRUE, t->literal_buf, 4);
         return true;
     }
 
-    if (t->literal_len == 5 &&
-        memcmp(t->literal_buf, "false", 5) == 0) {
-        r->token.type = JSON_TOKEN_FALSE;
-        r->token.start = t->literal_buf;
-        r->token.length = 5;
-        r->status = JSON_STREAM_TOKEN_OK;
+    if (t->literal_len == 5 && memcmp(t->literal_buf, "false", 5) == 0) {
+        *r = finish_token(t, JSON_TOKEN_FALSE, t->literal_buf, 4);
         return true;
     }
 
-    if (t->literal_len == 4 &&
-        memcmp(t->literal_buf, "null", 4) == 0) {
-        r->token.type = JSON_TOKEN_NULL;
-        r->token.start = t->literal_buf;
-        r->token.length = 4;
-        r->status = JSON_STREAM_TOKEN_OK;
+    if (t->literal_len == 4 && memcmp(t->literal_buf, "null", 4) == 0) {
+        *r = finish_token(t, JSON_TOKEN_NULL, t->literal_buf, 4);
         return true;
     }
 
