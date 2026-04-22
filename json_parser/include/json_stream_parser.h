@@ -14,6 +14,16 @@ typedef enum {
 
 typedef struct json_stream_parser json_stream_parser_t;
 
+struct json_stream_parser {
+    json_stream_tokenizer_t tokenizer;
+    json_parser_state_t state;
+    json_parser_stack_t stack;
+    bool error;
+    bool done;
+    json_parser_callbacks_t cb;
+    void *user_ctx;
+};
+
 void json_stream_parser_init(json_stream_parser_t *p,
                              json_parser_callbacks_t cb,
                              void *user_ctx);
