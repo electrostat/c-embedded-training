@@ -51,13 +51,12 @@ Useful as a foundational building block for drivers, streaming interfaces, and I
 ### **JSON Parser** 
 (SAX‑Style, Embedded‑Friendly)
 
-A zero‑allocation, deterministic JSON parser built around a clean SAX‑style event interface.
-This module focuses on correctness, predictability, and embedded suitability rather than general‑purpose flexibility.
+A pair of embedded‑friendly JSON parsers built around a clean SAX‑style event interface.
+Both variants emphasize deterministic behavior, fixed memory usage, and correctness over general‑purpose flexibility.
 
-Features:
-- Event‑driven parsing: 
-    Emits callbacks for object/array boundaries, keys, strings, numbers, booleans, and null values.
-    Ideal for streaming, low‑memory, or incremental processing.
+Core Features (shared by both parsers):
+- Event‑driven design: 
+    Emits callbacks for object/array boundaries, keys, strings, numbers, booleans, and null values. Ideal for low‑memory, incremental, or real‑time processing.
 - Deterministic state machine:   
     Explicit grammar enforcement using well‑defined parser states (EXPECT_VALUE, EXPECT_KEY, EXPECT_COLON, EXPECT_COMMA_OR_END).
     Rejects malformed JSON early and predictably.
@@ -70,7 +69,30 @@ Features:
     Covers basic objects, arrays, nested structures, mixed types, and error cases.
     Ensures correctness and stability before future extensions.
 
-This module lays the groundwork for future embedded-focused features such as streaming input, incremental parsing, and optional DOM or writer layers. Each will be kept modular and be intentionally scoped.
+### Standard JSON Parser (One‑Shot)
+A simple, single‑buffer parser for cases where the entire JSON document is available at once.
+Provides a convenience API for straightforward use in embedded applications.
+
+### Streaming JSON Parser (Incremental, Chunk‑Safe)
+A new module that enables JSON parsing from arbitrary input chunks—ideal for sockets, UART streams, DMA buffers, or any environment where data arrives incrementally.
+
+Streaming‑Specific Capabilities:
+- Chunk‑safe tokenizer
+    Handles strings, numbers, and literals even when split across chunk boundaries. Correctly decodes escape sequences (\", \\) across chunks.
+- Stable token memory
+    Tokens are emitted from internal fixed buffers, never from transient input slices.
+- Incremental parsing loop
+    feed() returns NEED_MORE, OK, or DONE, allowing the caller to drive parsing at their own pace.
+- Identical callback interface
+    The streaming parser uses the same event callbacks as the one‑shot parser, making it easy to switch between them.
+
+### Current Scope
+The streaming parser is functionally complete and fully tested for correctness across chunk boundaries.
+
+Future enhancements (planned as separate PRs):
+- Full JSON escape set (\n, \t, \r, \b, \f, \/)
+- Unicode escape decoding (\uXXXX)
+- Additional error reporting and fuzz testing
 
 ---
 
