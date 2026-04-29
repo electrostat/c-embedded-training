@@ -38,3 +38,87 @@ struct json_writer {
     // Whether the next value should be preceded by a comma
     int need_comma;
 };
+
+void json_writier_init(json_writer_t *w,  json_writer_output_fn out, void *ctx, int pretty, int indent_width) {
+    //output
+    w->out = out;
+    w->ctx = ctx;
+   
+    //formatting
+    w->pretty = pretty;
+    w->indent_width = indent_width;
+    w-> indent_level = 0;
+    
+    //state
+    w->state = JW_STATE_START;
+
+    //scope stack
+    w->depth = 0;
+    w->scope_stack[0] = JW_SCOPE_NONE;
+
+    //comma insertion
+    w->need_comma = 0;
+}
+
+void json_writer_reset(json_writer_t *w) {
+    w->indent_level = 0;
+    w->state = JW_STATE_START;
+    w->depth = 0;
+    w->scope_stack[0] = JW_SCOPE_NONE;
+    w->need_comma = 0;
+}
+
+//internal helpers
+static void write_raw(json_writer_t *w, const char *data, size_t len) {
+    if (w->out) {
+        w->out(w->ctx, data, len);
+    }
+}
+
+//string convenience wrapper
+static void write_str(json_writer_t *w, const char *data) {
+    write_raw(w, data, strlen(data));
+}
+
+static void write_indent(json_writer_t *w) {
+    if (!w->pretty) {
+        return;
+    }
+
+    write_raw(w, "\n", 1);
+
+    int total = w->indent_level * w->indent_width;
+    for (int i = 0; i < total; i++) {
+        write_raw(w, " ", 1);
+    }
+}
+
+static void maybe_write_comma(json_writer_t *w) {
+    if (w->need_comma) {
+        write_str(w, ",");
+        if (w->pretty) {
+            write_raw(w, " ", 1);
+        }
+        w->need_comma = 0;
+    }
+}
+
+static void push_scope(json_writer_t *w, jw_scope_t scope) {
+    if (w->depth < JSON_WRITER_MAX_DEPTH - 1) {
+        w->depth++;
+        w->scope_stack[w->depth] = scope;
+    }
+}
+
+static jw_scope_t pop_scope(json_writer_t *w) {
+    if (w->depth > 0) {
+        jw_scope_t s = w->scope_stack[w->depth];
+        w->depth--;
+        return s;
+    }
+    return JW_SCOPE_NONE;
+}
+
+static jw_scope_t current_scope(const json_writer_t *w) {
+    return w->scope_stack[w->depth];
+}
