@@ -123,9 +123,14 @@ static jw_scope_t current_scope(const json_writer_t *w) {
     return w->scope_stack[w->depth];
 }
 
-void json_writer_begin_object(json_writer_t *w) {
+//since these two happen so frequently together
+static void write_value_prefix(json_writer_t *w) {
     maybe_write_comma(w);
     write_indent(w);
+}
+
+void json_writer_begin_object(json_writer_t *w) {
+    write_value_prefix(w);
 
     write_str(w, "{");
 
@@ -155,8 +160,7 @@ void json_writer_end_object(json_writer_t *w) {
 }
 
 void json_writer_begin_array(json_writer_t *w) {
-    maybe_write_comma(w);
-    write_indent(w);
+    write_value_prefix(w);
 
     write_str(w, "[");
 
@@ -181,6 +185,101 @@ void json_writer_end_array(json_writer_t *w) {
 
     pop_scope(w);
 
+    w->state = JW_STATE_AFTER_VALUE;
+    w->need_comma = 1;
+}
+
+void json_writer_key(json_writer_t *w, const char *key) {
+    // Keys are only valid inside objects
+    if (current_scope(w) != JW_SCOPE_OBJECT) {
+        return;
+    }
+
+    // Keys are only valid when the writer expects a key
+    if (w->state != JW_STATE_KEY) {
+        return;
+    }
+
+    write_value_prefix(w);
+
+    // Write the key as a JSON string
+    write_raw(w, "\"", 1);
+    write_str(w, key);
+    write_raw(w, "\"", 1);
+
+    // add colon
+    write_raw(w, ":", 1);
+
+    //pretty mode -> add a space after the colon
+    if (w->pretty) {
+        write_raw(w, " ", 1);
+    }
+
+    // After writing a key, the next thing must be a value
+    w->state = JW_STATE_VALUE;
+}
+
+void json_writer_string(json_writer_t *w, const char value) {
+    if (w->state != JW_STATE_VALUE) {
+        return;
+    }
+
+    write_value_prefix(w);
+
+    // Opening quote
+    write_raw(w, "\"", 1);
+
+    // Emit characters with escaping
+    for (const char *p = value; *p; p++) {
+        char c = *p;
+
+        switch (c) {
+            case '\"': write_str(w, "\\\""); break;
+            case '\\': write_str(w, "\\\\"); break;
+            case '\b': write_str(w, "\\b");  break;
+            case '\f': write_str(w, "\\f");  break;
+            case '\n': write_str(w, "\\n");  break;
+            case '\r': write_str(w, "\\r");  break;
+            case '\t': write_str(w, "\\t");  break;
+
+            default:
+                // Control characters must be escaped as \u00XX
+                if ((unsigned char)c < 0x20) {
+                    char buf[7];
+                    snprintf(buf, sizeof(buf), "\\u%04x", c);
+                    write_str(w, buf);
+                } else {
+                    write_raw(w, &c, 1);
+                }
+                break;
+        }
+    }
+
+    // Closing quote
+    write_raw(w, "\"", 1);
+
+    // set AFTER_VALUE state
+    w->state = JW_STATE_AFTER_VALUE;
+    w->need_comma = 1;
+}
+
+void json_writer_number(json_writer_t *w, double value) {
+    if (w->state != JW_STATE_VALUE) {
+        return;
+    }
+
+    write_value_prefix(w);
+
+    // Format the number into a small local buffer
+    char buf[32];
+
+    // Deterministic formatting:
+    int len = snprintf(buf, sizeof(buf), "%.17g", value);
+
+    // Emit the number
+    write_raw(w, buf, (size_t)len);
+
+    // Update state machine
     w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
 }
