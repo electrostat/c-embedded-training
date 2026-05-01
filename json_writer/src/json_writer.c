@@ -122,3 +122,66 @@ static jw_scope_t pop_scope(json_writer_t *w) {
 static jw_scope_t current_scope(const json_writer_t *w) {
     return w->scope_stack[w->depth];
 }
+
+void json_writer_begin_object(json_writer_t *w) {
+    maybe_write_comma(w);
+    write_indent(w);
+
+    write_str(w, "{");
+
+    push_scope(w, JW_SCOPE_OBJECT);
+    w->indent_level++;
+
+    w->state = JW_STATE_KEY;
+    w->need_comma = 0;
+}
+
+void json_writer_end_object(json_writer_t *w) {
+    if (current_scope(w) != JW_SCOPE_OBJECT) {
+        return;
+    }
+
+    w->indent_level--;
+    if (w->pretty && w->state == JW_STATE_AFTER_VALUE) {
+        write_indent(w);
+    }
+
+    write_str(w, "}");
+
+    pop_scope(w);
+
+    w->state = JW_STATE_AFTER_VALUE;
+    w->need_comma = 1;
+}
+
+void json_writer_begin_array(json_writer_t *w) {
+    maybe_write_comma(w);
+    write_indent(w);
+
+    write_str(w, "[");
+
+    push_scope(w, JW_SCOPE_ARRAY);
+    w->indent_level++;
+
+    w->state = JW_STATE_VALUE;
+    w->need_comma = 0;
+}
+
+void json_writer_end_array(json_writer_t *w) {
+    if (current_scope(w) != JW_SCOPE_ARRAY) {
+        return; // or assert
+    }
+
+    w->indent_level--;
+    if (w->pretty && w->state == JW_STATE_AFTER_VALUE) {
+        write_indent(w);
+    }
+
+    write_str(w, "]");
+
+    pop_scope(w);
+
+    w->state = JW_STATE_AFTER_VALUE;
+    w->need_comma = 1;
+}
+
