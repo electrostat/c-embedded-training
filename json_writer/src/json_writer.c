@@ -18,25 +18,36 @@ typedef enum {
     JW_STATE_AFTER_VALUE    // value written (expect comma or close object/array)
 } jw_state_t;
 
+//error codes
+typedef enum {
+    JW_ERROR_NONE = 0,
+    JW_ERROR_INVALID_STATE,
+    JW_ERROR_INVALID_SCOPE,
+    JW_ERROR_DEPTH_OVERFLOW
+} jw_error_t;
+
 struct json_writer {
-    // Output plumbing
+    //Output plumbing
     json_writer_output_fn out;
     void *ctx;
 
-    // Formatting configuration
+    //Formatting configuration
     int pretty;
     int indent_width;
     int indent_level;
 
-    // State machine
+    //State machine
     jw_state_t state;
 
-    // Scope stack for nested objects/arrays
+    //Scope stack for nested objects/arrays
     jw_scope_t scope_stack[JSON_WRITER_MAX_DEPTH];
     int depth;
 
-    // Whether the next value should be preceded by a comma
+    //Whether the next value should be preceded by a comma
     int need_comma;
+
+    //error code
+    int error;
 };
 
 void json_writier_init(json_writer_t *w,  json_writer_output_fn out, void *ctx, int pretty, int indent_width) {
@@ -58,6 +69,9 @@ void json_writier_init(json_writer_t *w,  json_writer_output_fn out, void *ctx, 
 
     //comma insertion
     w->need_comma = 0;
+
+    //error
+    w->error = JW_ERROR_NONE;
 }
 
 void json_writer_reset(json_writer_t *w) {
@@ -66,6 +80,7 @@ void json_writer_reset(json_writer_t *w) {
     w->depth = 0;
     w->scope_stack[0] = JW_SCOPE_NONE;
     w->need_comma = 0;
+    w->error = JW_ERROR_NONE;
 }
 
 //internal helpers
@@ -107,6 +122,9 @@ static void push_scope(json_writer_t *w, jw_scope_t scope) {
     if (w->depth < JSON_WRITER_MAX_DEPTH - 1) {
         w->depth++;
         w->scope_stack[w->depth] = scope;
+    } else {
+        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
+        return;
     }
 }
 
@@ -116,6 +134,8 @@ static jw_scope_t pop_scope(json_writer_t *w) {
         w->depth--;
         return s;
     }
+
+    set_error(w, JW_ERROR_INVALID_SCOPE);
     return JW_SCOPE_NONE;
 }
 
@@ -129,7 +149,34 @@ static void write_value_prefix(json_writer_t *w) {
     write_indent(w);
 }
 
+static void set_error(json_writer_t *w, jw_error_t err) {
+    if (w->error == JW_ERROR_NONE) {
+        w->error = err;
+    }
+}
+
+static void error_check(json_writer_t *w) {
+    if (w->error != JW_ERROR_NONE) {
+        return;
+    }
+}
+
+static void invalid_state_check(json_writer_t *w) {
+    if (w->state != JW_STATE_VALUE) {
+        set_error(w, JW_ERROR_INVALID_STATE);
+        return;
+    }
+}
+
 void json_writer_begin_object(json_writer_t *w) {
+    error_check(w);
+    invalid_state_check(w);
+
+    if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
+        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
+        return;
+    }
+
     write_value_prefix(w);
 
     write_str(w, "{");
@@ -142,7 +189,10 @@ void json_writer_begin_object(json_writer_t *w) {
 }
 
 void json_writer_end_object(json_writer_t *w) {
+    error_check(w);
+
     if (current_scope(w) != JW_SCOPE_OBJECT) {
+        set_error(w, JW_ERROR_INVALID_SCOPE);
         return;
     }
 
@@ -160,6 +210,14 @@ void json_writer_end_object(json_writer_t *w) {
 }
 
 void json_writer_begin_array(json_writer_t *w) {
+    error_check(w);
+    invalid_state_check(w);
+
+    if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
+        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
+        return;
+    }
+
     write_value_prefix(w);
 
     write_str(w, "[");
@@ -172,8 +230,11 @@ void json_writer_begin_array(json_writer_t *w) {
 }
 
 void json_writer_end_array(json_writer_t *w) {
+    error_check(w);
+
     if (current_scope(w) != JW_SCOPE_ARRAY) {
-        return; // or assert
+        set_error(w, JW_ERROR_INVALID_SCOPE);
+        return;
     }
 
     w->indent_level--;
@@ -190,13 +251,15 @@ void json_writer_end_array(json_writer_t *w) {
 }
 
 void json_writer_key(json_writer_t *w, const char *key) {
-    // Keys are only valid inside objects
+    error_check(w);
+
     if (current_scope(w) != JW_SCOPE_OBJECT) {
+        set_error(w, JW_ERROR_INVALID_SCOPE);
         return;
     }
 
-    // Keys are only valid when the writer expects a key
     if (w->state != JW_STATE_KEY) {
+        set_error(w, JW_ERROR_INVALID_STATE);
         return;
     }
 
@@ -220,9 +283,8 @@ void json_writer_key(json_writer_t *w, const char *key) {
 }
 
 void json_writer_string(json_writer_t *w, const char value) {
-    if (w->state != JW_STATE_VALUE) {
-        return;
-    }
+    error_check(w);
+    invalid_state_check(w);
 
     write_value_prefix(w);
 
@@ -264,9 +326,8 @@ void json_writer_string(json_writer_t *w, const char value) {
 }
 
 void json_writer_number(json_writer_t *w, double value) {
-    if (w->state != JW_STATE_VALUE) {
-        return;
-    }
+    error_check(w);
+    invalid_state_check(w);
 
     write_value_prefix(w);
 
@@ -285,9 +346,8 @@ void json_writer_number(json_writer_t *w, double value) {
 }
 
 void json_writer_bool(json_writer_t *w, int value) {
-    if (w->state != JW_STATE_VALUE) {
-        return;
-    }
+    error_check(w);
+    invalid_state_check(w);
 
     comma_indent_check(w);
 
@@ -301,10 +361,9 @@ void json_writer_bool(json_writer_t *w, int value) {
     w->need_comma = 1;
 }
 
-void json_writer_null(json_writer_t *w){
-    if (w->state != JW_STATE_VALUE) {
-        return;
-    }
+void json_writer_null(json_writer_t *w) {
+    error_check(w);
+    invalid_state_check(w);
 
     comma_indent_check(w);
     write_str(w, "null");
@@ -314,9 +373,8 @@ void json_writer_null(json_writer_t *w){
 }
 
 void json_writer_raw(json_writer_t *w, const char *data) {
-    if (w->state != JW_STATE_VALUE) {
-        return;
-    }
+    error_check(w);
+    invalid_state_check(w);
 
     comma_indent_check(w);
     write_str(w, data);
@@ -325,5 +383,8 @@ void json_writer_raw(json_writer_t *w, const char *data) {
     w->need_comma = 1;
 }
 
+int json_writer_error(const json_writer_t *w) {
+    return w->error;
+}
 
 

@@ -48,6 +48,9 @@ void json_writer_null(json_writer_t *w);
 //if user wants raw data without any manipulation
 void json_writer_raw(json_writer_t *w, const char *data);
 
+//error output
+int json_writer_error(const json_writer_t *w);
+
 #ifdef __cplusplus
 }
 #endif
