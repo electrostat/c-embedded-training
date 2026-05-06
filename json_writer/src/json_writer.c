@@ -284,3 +284,46 @@ void json_writer_number(json_writer_t *w, double value) {
     w->need_comma = 1;
 }
 
+void json_writer_bool(json_writer_t *w, int value) {
+    if (w->state != JW_STATE_VALUE) {
+        return;
+    }
+
+    comma_indent_check(w);
+
+    if (value) {
+        write_str(w, "true");
+    } else {
+        write_str(w, "false");
+    }
+
+    w->state = JW_STATE_AFTER_VALUE;
+    w->need_comma = 1;
+}
+
+void json_writer_null(json_writer_t *w){
+    if (w->state != JW_STATE_VALUE) {
+        return;
+    }
+
+    comma_indent_check(w);
+    write_str(w, "null");
+
+    w->state = JW_STATE_AFTER_VALUE;
+    w->need_comma = 1;
+}
+
+void json_writer_raw(json_writer_t *w, const char *data) {
+    if (w->state != JW_STATE_VALUE) {
+        return;
+    }
+
+    comma_indent_check(w);
+    write_str(w, data);
+
+    w->state = JW_STATE_AFTER_VALUE;
+    w->need_comma = 1;
+}
+
+
+
