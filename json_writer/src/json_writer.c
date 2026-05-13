@@ -1,56 +1,8 @@
 #include "json_writer.h"
-#include <stddef.h>
+#include <string.h>
+#include <stdio.h>
 
-#define JSON_WRITER_MAX_DEPTH 32
-
-//internal scope
-typedef enum {
-    JW_SCOPE_NONE = 0,
-    JW_SCOPE_OBJECT,
-    JW_SCOPE_ARRAY
-} jw_scope_t;
-
-//state machine
-typedef enum {
-    JW_STATE_START = 0,     // nothing written
-    JW_STATE_KEY,           // expecting a key (inside object)
-    JW_STATE_VALUE,         // expecting a value (after key or inside array)
-    JW_STATE_AFTER_VALUE    // value written (expect comma or close object/array)
-} jw_state_t;
-
-//error codes
-typedef enum {
-    JW_ERROR_NONE = 0,
-    JW_ERROR_INVALID_STATE,
-    JW_ERROR_INVALID_SCOPE,
-    JW_ERROR_DEPTH_OVERFLOW
-} jw_error_t;
-
-struct json_writer {
-    //Output plumbing
-    json_writer_output_fn out;
-    void *ctx;
-
-    //Formatting configuration
-    int pretty;
-    int indent_width;
-    int indent_level;
-
-    //State machine
-    jw_state_t state;
-
-    //Scope stack for nested objects/arrays
-    jw_scope_t scope_stack[JSON_WRITER_MAX_DEPTH];
-    int depth;
-
-    //Whether the next value should be preceded by a comma
-    int need_comma;
-
-    //error code
-    int error;
-};
-
-void json_writier_init(json_writer_t *w,  json_writer_output_fn out, void *ctx, int pretty, int indent_width) {
+void json_writer_init(json_writer_t *w,  json_writer_output_fn out, void *ctx, int pretty, int indent_width) {
     //output
     w->out = out;
     w->ctx = ctx;
@@ -81,6 +33,12 @@ void json_writer_reset(json_writer_t *w) {
     w->scope_stack[0] = JW_SCOPE_NONE;
     w->need_comma = 0;
     w->error = JW_ERROR_NONE;
+}
+
+static void set_error(json_writer_t *w, jw_error_t err) {
+    if (w->error == JW_ERROR_NONE) {
+        w->error = err;
+    }
 }
 
 //internal helpers
@@ -147,12 +105,6 @@ static jw_scope_t current_scope(const json_writer_t *w) {
 static void write_value_prefix(json_writer_t *w) {
     maybe_write_comma(w);
     write_indent(w);
-}
-
-static void set_error(json_writer_t *w, jw_error_t err) {
-    if (w->error == JW_ERROR_NONE) {
-        w->error = err;
-    }
 }
 
 static void error_check(json_writer_t *w) {
@@ -282,7 +234,7 @@ void json_writer_key(json_writer_t *w, const char *key) {
     w->state = JW_STATE_VALUE;
 }
 
-void json_writer_string(json_writer_t *w, const char value) {
+void json_writer_string(json_writer_t *w, const char *value) {
     error_check(w);
     invalid_state_check(w);
 
@@ -349,7 +301,7 @@ void json_writer_bool(json_writer_t *w, int value) {
     error_check(w);
     invalid_state_check(w);
 
-    comma_indent_check(w);
+    write_value_prefix(w);
 
     if (value) {
         write_str(w, "true");
@@ -365,7 +317,7 @@ void json_writer_null(json_writer_t *w) {
     error_check(w);
     invalid_state_check(w);
 
-    comma_indent_check(w);
+    write_value_prefix(w);
     write_str(w, "null");
 
     w->state = JW_STATE_AFTER_VALUE;
@@ -376,7 +328,7 @@ void json_writer_raw(json_writer_t *w, const char *data) {
     error_check(w);
     invalid_state_check(w);
 
-    comma_indent_check(w);
+    write_value_prefix(w);
     write_str(w, data);
 
     w->state = JW_STATE_AFTER_VALUE;
