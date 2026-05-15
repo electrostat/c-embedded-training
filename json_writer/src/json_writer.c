@@ -67,6 +67,8 @@ static void write_indent(json_writer_t *w) {
 }
 
 static void push_scope(json_writer_t *w, jw_scope_t scope) {
+    fprintf(stderr, "[SCOPE] push: new_depth=%d scope=%d\n", w->depth+1, scope);
+
     if (w->depth < JSON_WRITER_MAX_DEPTH - 1) {
         w->depth++;
         w->scope_stack[w->depth] = scope;
@@ -77,6 +79,8 @@ static void push_scope(json_writer_t *w, jw_scope_t scope) {
 }
 
 static jw_scope_t pop_scope(json_writer_t *w) {
+    fprintf(stderr, "[SCOPE] pop: new_depth=%d\n", w->depth-1);
+
     if (w->depth > 0) {
         jw_scope_t s = w->scope_stack[w->depth];
         w->depth--;
@@ -106,10 +110,7 @@ static void write_value_prefix(json_writer_t *w) {
 }
 
 static int error_check(json_writer_t *w) {
-    if (w->error != JW_ERROR_NONE) {
-        return 1;
-    }
-    return 0;
+    return w->error != JW_ERROR_NONE;
 }
 
 static int can_write_value(json_writer_t *w) {
@@ -117,15 +118,18 @@ static int can_write_value(json_writer_t *w) {
     if (w->state == JW_STATE_START && w->depth == 0)
         return 1;
 
-    if (w->state == JW_STATE_VALUE)
-        return 1;
+    if (w->state == JW_STATE_VALUE || w->state == JW_STATE_AFTER_VALUE)
+    return 1;
 
     set_error(w, JW_ERROR_INVALID_STATE);
     return 0;
 }
 
 void json_writer_begin_object(json_writer_t *w) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
+    if (error_check(w)) return;
 
     if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
         set_error(w, JW_ERROR_DEPTH_OVERFLOW);
@@ -139,14 +143,22 @@ void json_writer_begin_object(json_writer_t *w) {
     write_str(w, "{");
 
     push_scope(w, JW_SCOPE_OBJECT);
-    w->indent_level++;
 
+    w->indent_level++;
     w->state = JW_STATE_KEY;
     w->need_comma = 0;
+    w->scope_stack[w->depth] = JW_SCOPE_OBJECT;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_end_object(json_writer_t *w) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
+    if (error_check(w)) return;
 
     if (current_scope(w) != JW_SCOPE_OBJECT) {
         set_error(w, JW_ERROR_INVALID_SCOPE);
@@ -164,10 +176,17 @@ void json_writer_end_object(json_writer_t *w) {
 
     w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_begin_array(json_writer_t *w) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
+    if (error_check(w)) return;
 
     if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
         set_error(w, JW_ERROR_DEPTH_OVERFLOW);
@@ -181,14 +200,22 @@ void json_writer_begin_array(json_writer_t *w) {
     write_str(w, "[");
 
     push_scope(w, JW_SCOPE_ARRAY);
-    w->indent_level++;
 
+    w->indent_level++;
     w->state = JW_STATE_VALUE;
     w->need_comma = 0;
+    w->scope_stack[w->depth] = JW_SCOPE_ARRAY;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_end_array(json_writer_t *w) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
+    if (error_check(w)) return;
 
     if (current_scope(w) != JW_SCOPE_ARRAY) {
         set_error(w, JW_ERROR_INVALID_SCOPE);
@@ -204,12 +231,19 @@ void json_writer_end_array(json_writer_t *w) {
 
     pop_scope(w);
 
-    w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
+    w->state = JW_STATE_AFTER_VALUE;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_key(json_writer_t *w, const char *key) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
+    if (error_check(w)) return;
 
     if (current_scope(w) != JW_SCOPE_OBJECT) {
         set_error(w, JW_ERROR_INVALID_SCOPE);
@@ -221,35 +255,37 @@ void json_writer_key(json_writer_t *w, const char *key) {
         return;
     }
 
-    write_value_prefix(w);
+    // Comma between key-value pairs
+    if (w->need_comma) {
+        write_raw(w, ",", 1);
+    }
+    if (w->pretty)
+        write_indent(w);
 
-    // Write the key as a JSON string
+    // Write "key":
     write_raw(w, "\"", 1);
     write_str(w, key);
     write_raw(w, "\"", 1);
-
-    // add colon
     write_raw(w, ":", 1);
 
-    //pretty mode -> add a space after the colon
     if (w->pretty) {
         write_raw(w, " ", 1);
     }
 
-    // After writing a key, the next thing must be a value
     w->state = JW_STATE_VALUE;
+    w->need_comma = 0;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_string(json_writer_t *w, const char *value) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
 
-    if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
-        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
-        return;
-    }
-
+    if (error_check(w)) return;
     if (!can_write_value(w)) return;
-
     write_value_prefix(w);
 
     // Opening quote
@@ -287,18 +323,18 @@ void json_writer_string(json_writer_t *w, const char *value) {
     // set AFTER_VALUE state
     w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_number(json_writer_t *w, double value) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
 
-    if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
-        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
-        return;
-    }
-    
+    if (error_check(w)) return;
     if (!can_write_value(w)) return;
-
     write_value_prefix(w);
 
     // Format the number into a small local buffer
@@ -313,18 +349,18 @@ void json_writer_number(json_writer_t *w, double value) {
     // Update state machine
     w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_bool(json_writer_t *w, int value) {
-    if (!error_check(w)) return;
-    
-    if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
-        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
-        return;
-    }
-    
-    if (!can_write_value(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
 
+    if (error_check(w)) return;
+    if (!can_write_value(w)) return;
     write_value_prefix(w);
 
     if (value) {
@@ -335,43 +371,50 @@ void json_writer_bool(json_writer_t *w, int value) {
 
     w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_null(json_writer_t *w) {
-    if (!error_check(w)) return;
-    
-    if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
-        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
-        return;
-    }
-    
-    if (!can_write_value(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
 
+    if (error_check(w)) return;
+    if (!can_write_value(w)) return;
     write_value_prefix(w);
     write_str(w, "null");
 
     w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 void json_writer_raw(json_writer_t *w, const char *data) {
-    if (!error_check(w)) return;
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
 
-    if (w->depth >= JSON_WRITER_MAX_DEPTH - 1) {
-        set_error(w, JW_ERROR_DEPTH_OVERFLOW);
-        return;
-    }
-    
+    if (error_check(w)) return;
     if (!can_write_value(w)) return;
-
     write_value_prefix(w);
     write_raw(w, data, strlen(data));
 
     w->state = JW_STATE_AFTER_VALUE;
     w->need_comma = 1;
+
+    fprintf(stderr, "[EXIT ] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
 }
 
 int json_writer_error(const json_writer_t *w) {
+    fprintf(stderr, "[ENTER] %s: state=%d depth=%d scope=%d need_comma=%d error=%d\n",
+        __func__, w->state, w->depth, current_scope(w), w->need_comma, w->error);
+
     return w->error;
 }
 
