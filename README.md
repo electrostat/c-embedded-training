@@ -95,6 +95,35 @@ Future enhancements (planned as separate PRs):
 - Additional error reporting and fuzz testing
 
 ---
+### JSON Writer
+(Deterministic, Embedded‑Friendly Serialization)
+
+A zero‑allocation, streaming JSON writer designed for deterministic behavior and embedded constraints.
+This module complements the JSON parsers by providing a clean, state‑driven way to produce JSON with full control over formatting and error handling.
+
+Core Features:
+- Deterministic state machine  
+    Explicit writer states (START, KEY, VALUE, AFTER_VALUE) ensure predictable behavior and early detection of invalid sequences.
+- Zero dynamic memory  
+    All state is stored internally; output is emitted through a user‑supplied callback. No heap usage, no hidden buffers.
+- Scope‑tracked object/array construction  
+    Uses a fixed‑depth stack to manage nested objects and arrays with overflow protection.
+- Pretty‑printing support  
+    Optional indentation and newlines for human‑readable output, with correct JSON formatting rules.
+- Deferred array opening  
+    Arrays emit [ only when the first value is written, ensuring no partial output is produced if an array is invalidated before completion.
+- Transactional reset semantics  
+    json_writer_reset() restores the writer to a clean state after an error, allowing safe reuse without leaking partial output.
+- Comprehensive test suite  
+    Covers nested structures, mixed types, invalid sequences, depth overflow, raw injection, and reset behavior.
+
+This module is ideal for:
+- Logging and telemetry in embedded systems
+- Structured output over UART, sockets, or DMA streams
+- Deterministic serialization for state machines
+- Producing JSON alongside the SAX‑style parser for round‑trip tests
+
+---
 
 ## Philosophy
 
