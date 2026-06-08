@@ -41,7 +41,7 @@ static const sm_transition_t sm_table[SM_STATE_COUNT][SM_EVENT_COUNT] = {
     }
 };
 
-void sm_init(sm_context_t *ctx) {
+void sm_init(sm_context_t *ctx){
     if(ctx == NULL) {
         return;
     }
@@ -52,4 +52,39 @@ void sm_init(sm_context_t *ctx) {
     ctx->error_code     = 0;
     ctx->user_data      = NULL;
     ctx->tick_count     = 0;
+}
+
+bool sm_dispatch(sm_context_t *ctx, sm_event_t event){
+    //invalid context
+    if (ctx == NULL){
+        return false;
+    }
+
+    //invalid event
+    if (event == SM_EVENT_COUNT){
+        return false;
+    }
+
+    sm_state_t current = ctx->current_state;
+    const sm_transition_t *t = &sm_table[current][event];
+
+    //no transition defined
+    if (t->next_state >= SM_STATE_COUNT) {
+        return false;
+    }
+
+    //guard side effects
+    if (t->handler != NULL) {
+        bool allowed = t->handler(ctx);
+        if (!allowed) {
+            return false;
+        }
+    }
+
+    // Perform transition
+    ctx->previous_state = ctx->current_state;
+    ctx->current_state = t->next_state;
+    ctx->last_event = event;
+
+    return true;
 }
