@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include "state_machine.h"
 
-struct sm_context {
+struct sm_context{
     sm_state_t current_state;
     sm_state_t previous_state;
     sm_event_t last_event;
@@ -87,4 +87,25 @@ bool sm_dispatch(sm_context_t *ctx, sm_event_t event){
     ctx->last_event = event;
 
     return true;
+}
+
+//helpers
+sm_state_t sm_get_state(const sm_context_t *ctx) {
+    return ctx ? ctx->current_state : SM_STATE_ERROR;
+}
+
+sm_state_t sm_get_previous_state(const sm_context_t *ctx) {
+    return ctx ? ctx->previous_state : SM_STATE_ERROR;
+}
+
+sm_event_t sm_get_last_event(const sm_context_t *ctx) {
+    return ctx ? ctx->last_event : SM_EVENT_RESET;
+}
+
+int32_t sm_get_error_code(const sm_context_t *ctx) {
+    return ctx ? ctx->error_code : -1;
+}
+
+uint32_t sm_get_tick_count(const sm_context_t *ctx) {
+    return ctx ? ctx->tick_count : 0;
 }

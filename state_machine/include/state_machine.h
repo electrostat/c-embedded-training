@@ -31,7 +31,11 @@ void sm_init(sm_context_t *ctx);
 //dispatch even to state machine. Returns True if causes valid transition
 bool sm_dispatch(sm_context_t *ctx, sm_event_t event);
 
-//helper to query current state
+//helpers
 sm_state_t sm_get_state(const sm_context_t *ctx);
+sm_state_t sm_get_previous_state(const sm_context_t *ctx);
+sm_event_t sm_get_last_event(const sm_context_t *ctx);
+int32_t    sm_get_error_code(const sm_context_t *ctx);
+uint32_t   sm_get_tick_count(const sm_context_t *ctx);
 
 #endif
