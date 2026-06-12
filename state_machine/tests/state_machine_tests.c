@@ -48,7 +48,9 @@ static bool test_invalid_usage(void){
     sm_init(&ctx);
 
     ASSERT_TRUE(!sm_dispatch(NULL, SM_EVENT_START), "dispatch with NULL ctx");
-    ASSERT_TRUE(!sm_dispatch(&ctx, (sm_event_t)999), "dispatch invalid event");
+    ASSERT_TRUE(!sm_dispatch(&ctx, -1), "dispatch negative event");
+    ASSERT_TRUE(!sm_dispatch(&ctx, SM_EVENT_COUNT), "dispatch event == SM_EVENT_COUNT");
+    ASSERT_TRUE(!sm_dispatch(&ctx, (sm_event_t)999), "dispatch large invalid event");
 
     return true;
 }

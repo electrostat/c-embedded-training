@@ -61,9 +61,10 @@ bool sm_dispatch(sm_context_t *ctx, sm_event_t event){
     }
 
     //invalid event
-    if (event == SM_EVENT_COUNT){
+    if (event < 0 || event >= SM_EVENT_COUNT){
         return false;
     }
+
 
     sm_state_t current = ctx->current_state;
     const sm_transition_t *t = &sm_table[current][event];
