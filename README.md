@@ -124,6 +124,35 @@ This module is ideal for:
 - Producing JSON alongside the SAX‑style parser for round‑trip tests
 
 ---
+### State Machine
+(Deterministic, Table‑Driven, Embedded‑Friendly)
+
+A lightweight, zero‑allocation state machine framework designed for deterministic behavior and clarity in embedded systems.
+This module provides a clean, table‑driven architecture with explicit state transitions, predictable execution, and a fully opaque context for safe encapsulation.
+
+Core Features:
+- Opaque context (sm_context_t)
+    Internal state is hidden behind a private struct, ensuring clean API boundaries and preventing accidental misuse.
+- Deterministic dispatch logic
+    All transitions are defined in a fixed transition table. No dynamic memory, no runtime allocation, no surprises.
+- Safe event handling  
+    Full bounds checking for invalid or negative events. Prevents undefined behavior and guarantees predictable outcomes.
+- Optional transition handlers  
+    Each transition may include a guard or side‑effect callback, enabling flexible behavior without complicating the core logic.
+- Comprehensive test harness  
+    Includes a private header for white‑box testing, Makefile integration, and unit tests covering initialization, valid transitions, invalid events, and guard behavior.
+- Clean, extensible design  
+    Ideal for protocol engines, control loops, UI navigation, or any embedded workflow requiring deterministic state transitions.
+
+This module is ideal for:
+- Control logic in embedded systems
+- Protocol parsing and command handling
+- UI/menu navigation
+- Deterministic workflow engines
+- Any system requiring predictable, testable state transitions
+
+
+---
 
 ## Philosophy
 
